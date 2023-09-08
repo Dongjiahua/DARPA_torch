@@ -1,11 +1,12 @@
 import argparse
 import torch 
-from model.unet import UNet
+from model.unet import MAP_UNet
 from data.dataset import MAPData
 from torch.utils.data import DataLoader
 import torchmetrics
 import os 
 from tqdm import tqdm
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_data', type=str,default="/media/jiahua/FILE/uiuc/NCSA/processed/training", help='Root train data path')
@@ -29,8 +30,8 @@ def train_epoch(train_loader, model,optimizer,scheduler,criterion):
         loss,acc= run_iter(data, model,metric,criterion)
         loss.backward()
         optimizer.step()
-        if i%10==0:
-            print(f"Accuracy on batch {i}: {acc}")
+        if i%100==0:
+            print(f"Accuracy on batch {i}/{len(train_loader)}: {acc}")
     scheduler.step()
     return metric.compute()
     
@@ -59,8 +60,7 @@ def train():
 
     torch.manual_seed(0)
     
-    model = UNet(n_channels=6,n_classes=1).to(device)
-    # model = torch.hub.load('milesial/Pytorch-UNet', 'unet_carvana', pretrained=True, scale=0.5).to(device)
+    model = MAP_UNet(n_channels=6,n_classes=1,pretrained=True).to(device)
     train_dataset = MAPData(data_path=args.train_data,type="poly")
     val_dataset = MAPData(data_path=args.val_data,type="poly")
     

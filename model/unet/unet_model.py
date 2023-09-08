@@ -21,6 +21,8 @@ class UNet(nn.Module):
         self.up3 = (Up(256, 128 // factor, bilinear))
         self.up4 = (Up(128, 64, bilinear))
         self.outc = (OutConv(64, n_classes))
+    
+        
 
     def forward(self, x):
         x1 = self.inc(x)
@@ -46,3 +48,21 @@ class UNet(nn.Module):
         self.up3 = torch.utils.checkpoint(self.up3)
         self.up4 = torch.utils.checkpoint(self.up4)
         self.outc = torch.utils.checkpoint(self.outc)
+
+class MAP_UNet(nn.Module):
+    def __init__(self, n_channels, n_classes, bilinear=False, pretrained=False, freeze=False):
+        super(MAP_UNet, self).__init__()
+        self.unet = torch.hub.load('milesial/Pytorch-UNet', 'unet_carvana', pretrained=pretrained, scale=0.5)
+        if freeze:
+            if pretrained:
+                for param in self.unet.parameters():
+                    param.requires_grad = False
+            else:
+                raise Exception("Cannot freeze untrained model")
+        self.unet.inc = (DoubleConv(n_channels, 64))
+        self.unet.outc = (OutConv(64, n_classes))
+    
+    def forward(self, x):
+        return self.unet(x)
+            
+            
