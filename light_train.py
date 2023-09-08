@@ -19,8 +19,8 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=0.01, help='Initial learning rate for sgd.')
     parser.add_argument('--workers', default=4, type=int, help='Number of data loading workers.')
     parser.add_argument('--epochs', type=int, default=50, help='Total training epochs.')
-    parser.add_argument('--pretrained', type=bool, default=False, help='Whether use pretrained model.')
-    parser.add_argument('--freeze', type=bool, default=False,  help='Whether freeze layers.')
+    parser.add_argument('--pretrained', type=bool, action='store_true', help='Whether use pretrained model.')
+    parser.add_argument('--freeze', type=bool, action='store_true',  help='Whether freeze layers.')
 
     return parser.parse_args()
 

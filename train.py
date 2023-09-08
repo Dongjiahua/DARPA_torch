@@ -7,6 +7,10 @@ import torchmetrics
 import os 
 from tqdm import tqdm
 
+## NOTICE: Strong suggest to use train_light.py instead of this file!
+## NOTICE: Strong suggest to use train_light.py instead of this file!
+## NOTICE: Strong suggest to use train_light.py instead of this file!
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_data', type=str,default="/media/jiahua/FILE/uiuc/NCSA/processed/training", help='Root train data path')
