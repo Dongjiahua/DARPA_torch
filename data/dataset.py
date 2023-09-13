@@ -18,7 +18,7 @@ class MAPData(data.Dataset):
     '''
     def __init__(self, data_path=training_path,type="poly",range=None):
         self.data_transforms = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((64, 64)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225]),
@@ -39,19 +39,59 @@ class MAPData(data.Dataset):
         map_img = Image.open(self.map_path[index])
         legend_img = Image.open(self.legend_path[index])
         seg_img = Image.open(self.seg_path[index])
-        
-        map_img = self.data_transforms(map_img)
-        legend_img = self.data_transforms(legend_img)
-        # print(seg_img.max())
-        # print(np.asarray(seg_img).max())
-        seg_img = torch.tensor(np.asarray(seg_img)).float().unsqueeze(0)
 
         
-        return {
+
+        # print(seg_img.max())
+        # print(np.asarray(seg_img).max())
+        seg_img = np.array(seg_img)
+        # origin_seg = np.array(seg_img)
+        if self.type=="point":
+            point_annotation = self.get_bbox(seg_img)
+            seg_img = self.get_seg_from_bbox(point_annotation,seg_img)
+
+        # import matplotlib.pyplot as plt
+        # f, axarr = plt.subplots(1,3)
+        # axarr[0].imshow(np.array(map_img),cmap="gray")
+        # axarr[1].imshow(np.array(legend_img),cmap="gray")
+        # axarr[2].imshow(seg_img,cmap="gray")        
+        # plt.show()
+        map_img = self.data_transforms(map_img)
+        legend_img = self.data_transforms(legend_img)
+        seg_img = torch.tensor(seg_img).float().unsqueeze(0)
+
+        return_dict = {
             "map_img": map_img,
             "legend_img": legend_img,
             "seg_img": seg_img
         }
+        return return_dict
+
+    def get_seg_from_bbox(self,point_annotation,seg_img):
+        for bbox in point_annotation:
+            seg_img[int(bbox[1]):int(bbox[3]),int(bbox[0]):int(bbox[2])] = 1
+        return seg_img
+    
+    def get_bbox(self,seg_img,frac = 0.08):
+        '''
+        return:
+            point_annotation: (N,2)
+        '''
+
+        points = np.array(np.where(seg_img==1)).T
+        # if len(points.shape)==1:
+        #     points = points.reshape(1,-1)
+        # print(points.shape)
+        
+        # use boxes around the points as annotations
+        point_annotation = np.zeros((len(points),4))
+        for i,point in enumerate(points):
+            y, x = point[0],point[1]
+            range = int(seg_img.shape[0]*frac)
+            point_annotation[i,:] = [x-range,y-range,x+range,y+range]
+        point_annotation[point_annotation>=seg_img.shape[0]] = seg_img.shape[0]
+        point_annotation[point_annotation<0] = 0
+        return point_annotation
     
     def __len__(self):
         return len(self.map_path)
