@@ -72,7 +72,7 @@ class DetData(data.Dataset):
             seg_img[int(bbox[1]):int(bbox[3]),int(bbox[0]):int(bbox[2])] = 1
         return seg_img
     
-    def get_bbox(self,seg_img,frac = 0.08):
+    def get_bbox(self,seg_img,frac = 0.05):
         '''
         return:
             point_annotation: (N,2)

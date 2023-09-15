@@ -16,7 +16,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_data', type=str,default="/media/jiahua/FILE/uiuc/NCSA/processed/training", help='Root train data path')
     parser.add_argument('--val_data', type=str, default="/media/jiahua/FILE/uiuc/NCSA/processed/validation",  help='Root val data path')
-    parser.add_argument('--out_dir', type=str, default="./output_seg", help='output_dir')
+    parser.add_argument('--out_dir', type=str, default="", help='output_dir')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size.')
     parser.add_argument('--lr', type=float, default=0.001, help='Initial learning rate for sgd.')
     parser.add_argument('--workers', default=4, type=int, help='Number of data loading workers.')
@@ -32,8 +32,9 @@ def train():
     torch.manual_seed(0)
     train_range = None
     val_range = None
-    mod = "seg"
-    os.makedirs(args.out_dir,exist_ok=True)
+    mod = "det"
+    if args.out_dir!="":
+        os.makedirs(args.out_dir,exist_ok=True)
     # model = DARPA_SEG(args)
     
     # model = DARPA.load_from_checkpoint("/media/jiahua/FILE/uiuc/NCSA/DARPA_torch/exp/lightning_logs/version_1/checkpoints/epoch=3-step=3136.ckpt",args=args)

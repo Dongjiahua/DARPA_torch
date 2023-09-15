@@ -76,7 +76,8 @@ class DARPA_DET(pl.LightningModule):
         
 
         output = self.model(map, legend,instance)
-        self.visualize_pred(batch,output,batch_idx)
+        if self.args.out_dir!="":
+            self.visualize_pred(batch,output,batch_idx)
         # loss = sum(losses.values())
         # self.val_loss_total += loss.item()
         # self.val_count += 1

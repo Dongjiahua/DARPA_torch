@@ -66,7 +66,8 @@ class DARPA_SEG(pl.LightningModule):
         output = self.model(model_input)
         
         output = torch.nn.functional.interpolate(output,size=seg.shape[-2:],mode="nearest")
-        self.visualize_pred(batch,output,batch_idx)
+        if self.args.out_dir!="":
+            self.visualize_pred(batch,output,batch_idx)
         # image = torch.sigmoid(output[0]).squeeze().cpu().detach().numpy().permute(1,2,0)
         # import matplotlib.pyplot as plt
         # plt.imshow(image,cmap="gray")
