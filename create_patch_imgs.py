@@ -10,6 +10,7 @@ import imageio
 
 import cv2 
 from patchify import patchify, unpatchify
+import multiprocessing as mp
 
 def hisEqulColor(img):
     ycrcb=cv2.cvtColor(img,cv2.COLOR_BGR2YCR_CB)
@@ -69,14 +70,11 @@ def create_patched_image(mapName, HE=False):
         writefile = mapName.split('.')[0]+'_'+label_dict['label']+'.png'
         
         if label_dict['label'].endswith('_poly'):
-             imageio.imwrite(os.path.join(write_filePath, 'poly', 'legend', writefile), im_crop_resize.astype(np.ui
-nt8))
+             imageio.imwrite(os.path.join(write_filePath, 'poly', 'legend', writefile), im_crop_resize.astype(np.uint8))
         elif label_dict['label'].endswith('_line'):
-             imageio.imwrite(os.path.join(write_filePath, 'line', 'legend', writefile), im_crop_resize.astype(np.ui
-nt8))
+             imageio.imwrite(os.path.join(write_filePath, 'line', 'legend', writefile), im_crop_resize.astype(np.uint8))
         if label_dict['label'].endswith('_pt'):
-            imageio.imwrite(os.path.join(write_filePath, 'point', 'legend', writefile), im_crop_resize.astype(np.uin
-t8))
+            imageio.imwrite(os.path.join(write_filePath, 'point', 'legend', writefile), im_crop_resize.astype(np.uint8))
             
     # keep patches that only when np.sum > 100
     for Legend in LegendList:
@@ -109,6 +107,17 @@ t8))
                     imageio.imwrite(write_seg, (seg_patchs[i][j][0][:,:,0]).astype(np.uint8))
                     imageio.imwrite(write_map, (map_patchs[i][j][0]).astype(np.uint8))                    
 
+def process(jsonFile):
+    if os.path.exists(os.path.join(write_filePath, 'finished', jsonFile)):
+        return
+    else:
+        with open(os.path.join(write_filePath, 'finished', jsonFile), 'w') as fp: pass
+    try:
+        mapName = jsonFile[0:-5]+'.tif'
+        create_patched_image(mapName)
+    except:
+        print("A file has something wrong with its legend: ", jsonFile)
+        
 if __name__ == "__main__":
     ## define file path
     input_filePath = '/home/shared/DARPA/validation_merged'
@@ -118,14 +127,6 @@ if __name__ == "__main__":
 
     jsonFiles = [x.split('/')[-1] for x in glob.glob(input_filePath+'/'+'*.json')]
 
-    for jsonFile in jsonFiles:
-        print(jsonFile)
-        if os.path.exists(os.path.join(write_filePath, 'finished', jsonFile)):
-            continue
-        else:
-        with open(os.path.join(write_filePath, 'finished', jsonFile), 'w') as fp: pass
-        try:
-            mapName = jsonFile[0:-5]+'.tif'
-            create_patched_image(mapName)
-        except:
-            print("A file has something wrong with its legend: ", jsonFile)
+    pool = mp.Pool(processes=8)
+    pool.map(process, jsonFiles)
+
