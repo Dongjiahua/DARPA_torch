@@ -7,9 +7,26 @@ from PIL import Image
 import PIL
 import os 
 from detectron2.structures import Boxes, ImageList, Instances
+from utils.heatmap import generate_channel_heatmap
 training_path = "/media/jiahua/FILE/uiuc/NCSA/processed/training"
 validation_path = "/media/jiahua/FILE/uiuc/NCSA/processed/validation"
 
+class metric:
+    def __init__(self) -> None:
+        self.total = 0
+        self.count = 0
+    
+    def update(self,num):
+        self.total += num
+        self.count += 1
+    
+    def compute(self):
+        return self.total/self.count
+    
+    def reset(self):
+        self.total = 0
+        self.count = 0
+        
 class DetData(data.Dataset):
     '''
     return:
@@ -45,7 +62,7 @@ class DetData(data.Dataset):
         seg_img = np.array(seg_img)
         # origin_seg = np.array(seg_img)
         assert self.type=="point"
-        point_annotation = self.get_bbox(seg_img)
+        point_annotation, keypoints = self.get_bbox(seg_img)
         seg_img = self.get_seg_from_bbox(point_annotation,seg_img)
         point_annotation[:,[0,2]] = point_annotation[:,[0,2]]/seg_img.shape[1]*self.image_size[0]
         point_annotation[:,[1,3]] = point_annotation[:,[1,3]]/seg_img.shape[0]*self.image_size[1]
@@ -57,13 +74,16 @@ class DetData(data.Dataset):
 
         map_img = self.data_transforms(map_img)
         legend_img = self.data_transforms(legend_img)
-        seg_img = torch.tensor(seg_img).float().unsqueeze(0)
-
+        seg_img = torch.tensor(seg_img).float()
+        seg_img = generate_channel_heatmap(seg_img.shape[-2:],boxes,10,device="cpu")
+        keypoints = torch.tensor(keypoints)
+        # print(seg_img.shape)
         return_dict = {
             "map_img": map_img,
             "legend_img": legend_img,
             "seg_img": seg_img,
-            "instance": instance
+            "instance": instance,
+            "keypoints": keypoints
         }
         return return_dict
 
@@ -91,7 +111,7 @@ class DetData(data.Dataset):
             point_annotation[i,:] = [x-range,y-range,x+range,y+range]
         point_annotation[point_annotation>=seg_img.shape[0]] = seg_img.shape[0]
         point_annotation[point_annotation<0] = 0
-        return point_annotation
+        return point_annotation, points[:,[1,0]]
     
     def __len__(self):
         return len(self.map_path)
@@ -101,7 +121,7 @@ def collect_fn_det(batch):
     dics = batch
     return_dict = {}
     for k in dics[0].keys():
-        if k!="instance":
+        if k!="instance" and k!="keypoints":
             return_dict[k] = torch.stack([dic[k] for dic in dics],dim=0)
         else:
             return_dict[k] = [dic[k] for dic in dics]

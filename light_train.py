@@ -16,7 +16,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_data', type=str,default="/media/jiahua/FILE/uiuc/NCSA/processed/training", help='Root train data path')
     parser.add_argument('--val_data', type=str, default="/media/jiahua/FILE/uiuc/NCSA/processed/validation",  help='Root val data path')
-    parser.add_argument('--out_dir', type=str, default="", help='output_dir')
+    parser.add_argument('--out_dir', type=str, default="heat_out", help='output_dir')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size.')
     parser.add_argument('--lr', type=float, default=0.001, help='Initial learning rate for sgd.')
     parser.add_argument('--workers', default=4, type=int, help='Number of data loading workers.')
@@ -30,7 +30,7 @@ def parse_args():
 def train():
     args = parse_args()
     torch.manual_seed(0)
-    train_range = None
+    train_range = (0,2000)
     val_range = None
     mod = "det"
     if args.out_dir!="":
@@ -53,12 +53,6 @@ def train():
         
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers, collate_fn=collect_fn_det)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False,num_workers=args.workers, collate_fn=collect_fn_det)
-    # train_dataset = MAPData(data_path=args.train_data,type="point",range=(0,20000))
-    # val_dataset = MAPData(data_path=args.val_data,type="point",range=(-2000,-1))
-    
-    # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
-    # val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False,num_workers=args.workers)
-    
     trainer = pl.Trainer(devices=1, max_epochs=args.epochs,precision=32,check_val_every_n_epoch=1,default_root_dir="./exp/")
     
     trainer.fit(model, train_loader, val_loader)
