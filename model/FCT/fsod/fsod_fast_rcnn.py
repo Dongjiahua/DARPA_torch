@@ -198,6 +198,7 @@ class FsodFastRCNNOutputs(object):
             ), "Proposals should not require gradients!"
 
             # The following fields should exist only when training.
+
             if proposals[0].has("gt_boxes"):
                 self.gt_boxes = box_type.cat([p.gt_boxes for p in proposals])
                 assert proposals[0].has("gt_classes")
@@ -501,7 +502,8 @@ class FsodFastRCNNOutputLayers(nn.Module):
         if self.local_correlation:
             x_query_cor = self.conv_cor(x_query)
             support_cor = self.conv_cor(support)
-            x_cor = F.relu(F.conv2d(x_query_cor, support_cor.permute(1,0,2,3), groups=self.input_size), inplace=True).squeeze(3).squeeze(2)
+            x_cor = F.relu(F.adaptive_avg_pool2d(x_query_cor*support_cor,(1,1))).squeeze(3).squeeze(2)
+
             cls_score_cor = self.cls_score_cor(x_cor)
 
         # relation

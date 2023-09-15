@@ -1,0 +1,21 @@
+MODEL:
+  META_ARCHITECTURE: "FsodRCNN"
+  
+  PROPOSAL_GENERATOR:
+    NAME: "FsodRPN" 
+  WEIGHTS: "/media/jiahua/FILE/uiuc/NCSA/FCT/pvt_v2_b2_li_C4.pth"
+  ROI_HEADS:
+    NAME: "FsodRes5ROIHeads"
+    BATCH_SIZE_PER_IMAGE: 128
+    POSITIVE_FRACTION: 0.5
+    NUM_CLASSES: 1
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 101
+  BACKBONE:
+    FREEZE_AT: 3
+    NAME: "build_FCT_backbone"
+    TYPE: "pvt_v2_b2_li"
+  RPN:
+    PRE_NMS_TOPK_TEST: 6000
+    POST_NMS_TOPK_TEST: 100

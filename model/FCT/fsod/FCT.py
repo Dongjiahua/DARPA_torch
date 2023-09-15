@@ -140,9 +140,10 @@ class Attention(nn.Module):
                 m.bias.data.zero_()
 
     def forward(self, x, H_x, W_x, y, H_y, W_y):
+
         B_x, N_x, C_x = x.shape
         B_y, N_y, C_y = y.shape
-        assert B_x == 1 or B_y == 1
+        # assert B_x == 1 or B_y == 1
         # assert B_y == 1
         q_x = self.q(x).reshape(B_x, N_x, self.num_heads, C_x // self.num_heads).permute(0, 2, 1, 3)
         q_y = self.q(y).reshape(B_y, N_y, self.num_heads, C_y // self.num_heads).permute(0, 2, 1, 3)
@@ -175,21 +176,20 @@ class Attention(nn.Module):
             y_ = self.act(y_)
             kv_y = self.kv(y_).reshape(B_y, -1, 2, self.num_heads, C_y // self.num_heads).permute(2, 0, 3, 1, 4)
 
+        # print("k_x.shape={}, k_y.shape={}".format(kv_x.shape, kv_y.shape))
         k_x, v_x = kv_x[0], kv_x[1]
         k_y, v_y = kv_y[0], kv_y[1]
-        # print("k_x.shape={}, k_y.shape={}".format(k_x.shape, k_y.shape))
-        # print("v_x.shape={}, v_y.shape={}".format(v_x.shape, v_y.shape))
 
-        if B_x == 1:
-            k_y_avg = k_y.mean(0, True)
-            v_y_avg = v_y.mean(0, True)
-            k_cat_x = torch.cat((k_x, k_y_avg), dim=2)
-            v_cat_x = torch.cat((v_x, v_y_avg), dim=2)
-        elif B_y == 1:
-            k_y_ext = k_y.repeat(B_x, 1, 1, 1)
-            v_y_ext = v_y.repeat(B_x, 1, 1, 1)
-            k_cat_x = torch.cat((k_x, k_y_ext), dim=2)
-            v_cat_x = torch.cat((v_x, v_y_ext), dim=2)
+        # if B_x == 1:
+        #     k_y_avg = k_y.mean(0, True)
+        #     v_y_avg = v_y.mean(0, True)
+        #     k_cat_x = torch.cat((k_x, k_y_avg), dim=2)
+        #     v_cat_x = torch.cat((v_x, v_y_avg), dim=2)
+        # elif B_y == 1:
+        #     k_y_ext = k_y.repeat(B_x, 1, 1, 1)
+        #     v_y_ext = v_y.repeat(B_x, 1, 1, 1)
+        k_cat_x = torch.cat((k_x, k_y), dim=2)
+        v_cat_x = torch.cat((v_x, v_y), dim=2)
 
         # print("k_cat.shape={}, v_cat.shape={}".format(k_cat.shape, v_cat.shape))
 
@@ -201,16 +201,16 @@ class Attention(nn.Module):
         x = self.proj(x)
         x = self.proj_drop(x)
 
-        if B_x == 1:
-            k_x_ext = k_x.repeat(B_y, 1, 1, 1)
-            v_x_ext = v_x.repeat(B_y, 1, 1, 1)
-            k_cat_y = torch.cat((k_x_ext, k_y), dim=2)
-            v_cat_y = torch.cat((v_x_ext, v_y), dim=2)
-        elif B_y == 1:
-            k_x_avg = k_x.mean(0, True)
-            v_x_avg = v_x.mean(0, True)
-            k_cat_y = torch.cat((k_x_avg, k_y), dim=2)
-            v_cat_y = torch.cat((v_x_avg, v_y), dim=2)
+        # if B_x == 1:
+        #     k_x_ext = k_x.repeat(B_y, 1, 1, 1)
+        #     v_x_ext = v_x.repeat(B_y, 1, 1, 1)
+        #     k_cat_y = torch.cat((k_x_ext, k_y), dim=2)
+        #     v_cat_y = torch.cat((v_x_ext, v_y), dim=2)
+        # elif B_y == 1:
+        #     k_x_avg = k_x.mean(0, True)
+        #     v_x_avg = v_x.mean(0, True)
+        k_cat_y = torch.cat((k_x, k_y), dim=2)
+        v_cat_y = torch.cat((v_x, v_y), dim=2)
 
         attn_y = (q_y @ k_cat_y.transpose(-2, -1)) * self.scale
         attn_y = attn_y.softmax(dim=-1)

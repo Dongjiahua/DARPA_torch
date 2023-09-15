@@ -353,9 +353,9 @@ class FsodRPN(nn.Module):
         pos_mask = gt_labels == 1
         num_pos_anchors = pos_mask.sum().item()
         num_neg_anchors = (gt_labels == 0).sum().item()
-        storage = get_event_storage()
-        storage.put_scalar("rpn/num_pos_anchors", num_pos_anchors / num_images)
-        storage.put_scalar("rpn/num_neg_anchors", num_neg_anchors / num_images)
+        # storage = get_event_storage()
+        # storage.put_scalar("rpn/num_pos_anchors", num_pos_anchors / num_images)
+        # storage.put_scalar("rpn/num_neg_anchors", num_neg_anchors / num_images)
 
         localization_loss = smooth_l1_loss(
             cat(pred_anchor_deltas, dim=1)[pos_mask],
@@ -396,9 +396,10 @@ class FsodRPN(nn.Module):
             loss: dict[Tensor] or None
         """
         features = [features[f] for f in self.in_features]
-        anchors = self.anchor_generator(features)
 
+        anchors = self.anchor_generator(features)
         pred_objectness_logits, pred_anchor_deltas = self.rpn_head(features)
+
         # Transpose the Hi*Wi*A dimension to the middle:
         pred_objectness_logits = [
             # (N, A, Hi, Wi) -> (N, Hi, Wi, A) -> (N, Hi*Wi*A)
@@ -412,8 +413,8 @@ class FsodRPN(nn.Module):
             .flatten(1, -2)
             for x in pred_anchor_deltas
         ]
-
-        if self.training:
+        # if self.training:
+        if True:
             gt_labels, gt_boxes = self.label_and_sample_anchors(anchors, gt_instances)
             #losses = self.losses(
             #    anchors, pred_objectness_logits, gt_labels, pred_anchor_deltas, gt_boxes
@@ -451,7 +452,10 @@ class FsodRPN(nn.Module):
         # The proposals are treated as fixed for approximate joint training with roi heads.
         # This approach ignores the derivative w.r.t. the proposal boxes’ coordinates that
         # are also network responses, so is approximate.
+        # print(f"pred_objectness_logits: {pred_objectness_logits[0].shape}")
+        # print(f"pred_anchor_deltas: {pred_anchor_deltas[0].shape}")
         pred_proposals = self._decode_proposals(anchors, pred_anchor_deltas)
+        # print(pred_proposals[0].shape)
         return find_top_rpn_proposals(
             pred_proposals,
             pred_objectness_logits,

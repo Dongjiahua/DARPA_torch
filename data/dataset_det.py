@@ -6,10 +6,11 @@ import numpy as np
 from PIL import Image
 import PIL
 import os 
+from detectron2.structures import Boxes, ImageList, Instances
 training_path = "/media/jiahua/FILE/uiuc/NCSA/processed/training"
 validation_path = "/media/jiahua/FILE/uiuc/NCSA/processed/validation"
 
-class MAPData(data.Dataset):
+class DetData(data.Dataset):
     '''
     return:
         map_img: map image (3,224,224)
@@ -17,8 +18,9 @@ class MAPData(data.Dataset):
         seg_img: segmentation image (3,224,224)
     '''
     def __init__(self, data_path=training_path,type="poly",range=None):
+        self.image_size = (224,224)
         self.data_transforms = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize(self.image_size),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225]),
@@ -40,15 +42,17 @@ class MAPData(data.Dataset):
         legend_img = Image.open(self.legend_path[index])
         seg_img = Image.open(self.seg_path[index])
 
-        
-
-        # print(seg_img.max())
-        # print(np.asarray(seg_img).max())
         seg_img = np.array(seg_img)
         # origin_seg = np.array(seg_img)
-        if self.type=="point":
-            point_annotation = self.get_bbox(seg_img)
-            seg_img = self.get_seg_from_bbox(point_annotation,seg_img)
+        assert self.type=="point"
+        point_annotation = self.get_bbox(seg_img)
+        seg_img = self.get_seg_from_bbox(point_annotation,seg_img)
+        point_annotation[:,[0,2]] = point_annotation[:,[0,2]]/seg_img.shape[1]*self.image_size[0]
+        point_annotation[:,[1,3]] = point_annotation[:,[1,3]]/seg_img.shape[0]*self.image_size[1]
+        boxes = torch.tensor(point_annotation)
+        instance = Instances(self.image_size)
+        instance.gt_boxes = Boxes(boxes)
+        instance.gt_classes = torch.zeros((len(boxes),),dtype=torch.int64)
 
 
         map_img = self.data_transforms(map_img)
@@ -58,7 +62,8 @@ class MAPData(data.Dataset):
         return_dict = {
             "map_img": map_img,
             "legend_img": legend_img,
-            "seg_img": seg_img
+            "seg_img": seg_img,
+            "instance": instance
         }
         return return_dict
 
@@ -67,7 +72,7 @@ class MAPData(data.Dataset):
             seg_img[int(bbox[1]):int(bbox[3]),int(bbox[0]):int(bbox[2])] = 1
         return seg_img
     
-    def get_bbox(self,seg_img,frac = 0.05):
+    def get_bbox(self,seg_img,frac = 0.08):
         '''
         return:
             point_annotation: (N,2)
@@ -90,3 +95,14 @@ class MAPData(data.Dataset):
     
     def __len__(self):
         return len(self.map_path)
+
+def collect_fn_det(batch):
+    # print(batch)
+    dics = batch
+    return_dict = {}
+    for k in dics[0].keys():
+        if k!="instance":
+            return_dict[k] = torch.stack([dic[k] for dic in dics],dim=0)
+        else:
+            return_dict[k] = [dic[k] for dic in dics]
+    return return_dict

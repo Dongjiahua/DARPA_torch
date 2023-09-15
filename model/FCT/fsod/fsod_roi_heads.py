@@ -262,11 +262,20 @@ class FsodRes5ROIHeads(ROIHeads):
             assert targets
             proposals = self.label_and_sample_proposals(proposals, targets)
         del targets
-
+        
+        # print(f"features.shape: {features['res4'].shape}")
+        B = len(proposals)
+        N = proposals[0].proposal_boxes.tensor.shape[0]
+        C,H, W = features['res4'].shape[-3:]
+        support_box_features = support_box_features.unsqueeze(1).expand(-1, N,C,H,W).reshape(B*N, C, H, W)
+        print(support_box_features.shape)
         proposal_boxes = [x.proposal_boxes for x in proposals]
+        
         box_features = self.roi_pooling(features, proposal_boxes)
 
-        support_box_features = support_box_features.mean(0, True)
+        # support_box_features = support_box_features.mean(0, True)
+        # print(f"support_box_features.shape: {support_box_features.shape}")
+        # print(f"box_features.shape: {box_features.shape}")
         box_features, support_box_features = self._shared_roi_transform_mutual(box_features, support_box_features)
 
         pred_class_logits, pred_proposal_deltas = self.box_predictor(box_features, support_box_features)
@@ -274,7 +283,7 @@ class FsodRes5ROIHeads(ROIHeads):
         return pred_class_logits, pred_proposal_deltas, proposals
 
     @torch.no_grad()
-    def eval_with_support(self, images, query_features_dict, support_proposals_dict, support_box_features_dict):
+    def eval_with_support(self, images, query_features, support_proposals, support_features):
         """
         See :meth:`ROIHeads.forward`.
         """
@@ -285,6 +294,8 @@ class FsodRes5ROIHeads(ROIHeads):
         full_bboxes_ls = []
         full_cls_ls = []
         cnt = 0
+        
+        proposals_ls = [Instances.cat([proposals[0], ])]
         for cls_id, proposals in support_proposals_dict.items():
             support_box_features = support_box_features_dict[cls_id].mean(0, True)
 
