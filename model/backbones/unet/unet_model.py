@@ -50,8 +50,12 @@ class UNet(nn.Module):
         self.outc = torch.utils.checkpoint(self.outc)
 
 class MAP_UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=False, pretrained=False, freeze=False):
+    def __init__(self, args):
         super(MAP_UNet, self).__init__()
+        freeze = args.freeze
+        pretrained = args.pretrained
+        n_channels = 6
+        n_classes = 1
         self.unet = torch.hub.load('milesial/Pytorch-UNet', 'unet_carvana', pretrained=pretrained, scale=0.5)
         if freeze:
             if pretrained:
@@ -62,7 +66,50 @@ class MAP_UNet(nn.Module):
         self.unet.inc = (DoubleConv(n_channels, 64))
         self.unet.outc = (OutConv(64, n_classes))
     
-    def forward(self, x):
-        return self.unet(x)
+    def forward(self, x, legend, instance):
+        x = torch.cat([x,legend],dim=1)
+        x = self.unet(x)
+        x = F.interpolate(x,size=(256,256),mode="bilinear")
+        x = torch.sigmoid(x)
+        return x
+    
+class Sim_UNet(nn.Module):
+    def __init__(self, args):
+        super(Sim_UNet, self).__init__()
+        freeze = args.freeze
+        pretrained = args.pretrained
+        n_channels = 3
+        n_classes = 1
+        self.unet = torch.hub.load('milesial/Pytorch-UNet', 'unet_carvana', pretrained=pretrained, scale=0.5)
+        
+        if freeze:
+            if pretrained:
+                for param in self.unet.parameters():
+                    param.requires_grad = False
+            else:
+                raise Exception("Cannot freeze untrained model")
+        self.unet.outc = nn.Identity()
+        import copy 
+        self.unet_t = copy.deepcopy(self.unet)
+        # for param in self.unet_t.parameters():
+        #     param.requires_grad = False
+        self.outc = OutConv(1, n_classes)
+    
+    def forward(self, x, legend, instance):
+        legend = F.interpolate(legend,size=(32,32),mode="bilinear")
+        x = self.unet(x)
+        # with torch.no_grad():
+        #     legend = self.unet_t(legend)
+        legend = self.unet_t(legend)
+        # x = torch.cat([x,legend],dim=1)
+        x = F.interpolate(x,size=(256,256),mode="bilinear")
+        legend = F.adaptive_avg_pool2d(legend, (1,1))
+        # x = self.outc(x)
+        x = F.normalize(x,dim=1)
+        legend = F.normalize(legend,dim=1)
+        x = torch.sum(x*legend.detach(),dim=1).unsqueeze(1)
+        x = self.outc(x)
+        x = torch.sigmoid(x)
+        return x
             
             

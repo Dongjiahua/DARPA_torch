@@ -1,4 +1,4 @@
-from .unet import MAP_UNet
+from model.backbones.unet import MAP_UNet
 import lightning.pytorch as pl
 import torchmetrics
 import torch 
@@ -9,7 +9,7 @@ class DARPA_SEG(pl.LightningModule):
         super().__init__()
         self.args = args
 
-        self.model = MAP_UNet(n_channels=6,n_classes=1,pretrained=args.pretrained,freeze=args.freeze)
+        self.model = MAP_UNet(args)
         self.train_acc = torchmetrics.Accuracy(task="binary")
         self.val_acc = torchmetrics.Accuracy(task="binary")
         self.train_f1 = torchmetrics.F1Score(task = "binary")

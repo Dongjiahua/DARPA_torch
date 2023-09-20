@@ -11,7 +11,8 @@ from detectron2.checkpoint import DetectionCheckpointer
 _EXCLUDE = {"torch", "ShapeSpec"}
 __all__ = [k for k in globals().keys() if k not in _EXCLUDE and not k.startswith("_")]
 
-def build_model(cfg_path):
+def build_model(args):
+    cfg_path = args.fct_cfg
     cfg = get_cfg()
     cfg.merge_from_file(cfg_path)
     

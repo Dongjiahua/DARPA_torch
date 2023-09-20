@@ -179,8 +179,8 @@ class FsodRCNN(nn.Module):
         pos_support_features = y
         pos_support_features_pool = pos_support_features.mean(dim=[2, 3], keepdim=True)
         #TODO: check the correctness of the following line
-        pos_correlation = query_features_res4*pos_support_features_pool.detach() # attention map
-        pos_map_out = self.final_out(torch.nn.functional.interpolate(pos_correlation,size=(256,256),mode="bilinear"))
+        # pos_correlation = query_features_res4*pos_support_features_pool.detach() # attention map
+        pos_map_out = self.final_out(torch.nn.functional.interpolate(query_features_res4,size=(256,256),mode="bilinear"))
         return pos_map_out
         pos_features = {'res4': pos_correlation} 
         # query_gt_instances = instances

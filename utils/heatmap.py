@@ -5,7 +5,6 @@ import numpy as np
 import torch
 from skimage.feature import peak_local_max
 
-
 def BCE_loss(input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     """Simple BCE loss. Used to compute the BCE of the ground truth heatmaps as the BCELoss in Pytorch complains
     about instability in FP16 (even with no_grad).
@@ -204,6 +203,7 @@ def compute_keypoint_probability(heatmap: torch.Tensor, detected_keypoints: List
     """
     # note the order! (u,v) is how we write , but the heatmap has to be indexed (v,u) as it is H x W
     return [heatmap[k[1]][k[0]].item() for k in detected_keypoints]
+
 
 
 if __name__ == "__main__":

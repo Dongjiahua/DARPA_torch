@@ -35,7 +35,7 @@ class DetData(data.Dataset):
         seg_img: segmentation image (3,224,224)
     '''
     def __init__(self, data_path=training_path,type="poly",range=None):
-        self.image_size = (224,224)
+        self.image_size = (112,112)
         self.data_transforms = transforms.Compose([
         transforms.Resize(self.image_size),
         transforms.ToTensor(),
@@ -58,7 +58,7 @@ class DetData(data.Dataset):
         map_img = Image.open(self.map_path[index])
         legend_img = Image.open(self.legend_path[index])
         seg_img = Image.open(self.seg_path[index])
-
+  
         seg_img = np.array(seg_img)
         # origin_seg = np.array(seg_img)
         assert self.type=="point"
@@ -75,8 +75,12 @@ class DetData(data.Dataset):
         map_img = self.data_transforms(map_img)
         legend_img = self.data_transforms(legend_img)
         seg_img = torch.tensor(seg_img).float()
-        seg_img = generate_channel_heatmap(seg_img.shape[-2:],boxes,10,device="cpu")
+
+        
+
         keypoints = torch.tensor(keypoints)
+        seg_img = generate_channel_heatmap(seg_img.shape[-2:],keypoints,3,device="cpu")
+
         # print(seg_img.shape)
         return_dict = {
             "map_img": map_img,

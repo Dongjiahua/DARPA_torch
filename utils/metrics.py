@@ -4,7 +4,6 @@ from typing import Callable, Dict, List, Tuple
 import math 
 from dataclasses import dataclass
 import copy 
-
 @dataclass
 class Keypoint:
     """A simple class datastructure for Keypoints,
@@ -161,7 +160,7 @@ class KeypointAPMetrics(Metric):
 
     full_state_update = False
 
-    def __init__(self, keypoint_threshold_distances: List[int]=[5,10], dist_sync_on_step=False):
+    def __init__(self, keypoint_threshold_distances: List[int]=[10,20], dist_sync_on_step=False):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
 
         self.ap_metrics = [KeypointAPMetric(dst, dist_sync_on_step) for dst in keypoint_threshold_distances]
@@ -215,3 +214,4 @@ class KeypointAPMetric(Metric):
         p, r = calculate_precision_recall(self.classified_keypoints, int(self.total_ground_truth_keypoints.cpu()))
         m_ap = calculate_ap_from_pr(p, r)
         return m_ap
+    
