@@ -91,23 +91,23 @@ class Sim_UNet(nn.Module):
         self.unet.outc = nn.Identity()
         import copy 
         self.unet_t = copy.deepcopy(self.unet)
-        # for param in self.unet_t.parameters():
-        #     param.requires_grad = False
-        self.outc = OutConv(1, n_classes)
+        for param in self.unet_t.parameters():
+            param.requires_grad = False
+        self.outc = OutConv(64, n_classes)
     
     def forward(self, x, legend, instance):
         legend = F.interpolate(legend,size=(32,32),mode="bilinear")
         x = self.unet(x)
-        # with torch.no_grad():
-        #     legend = self.unet_t(legend)
-        legend = self.unet_t(legend)
+        with torch.no_grad():
+            legend = self.unet_t(legend)
+        # legend = self.unet_t(legend)
         # x = torch.cat([x,legend],dim=1)
         x = F.interpolate(x,size=(256,256),mode="bilinear")
         legend = F.adaptive_avg_pool2d(legend, (1,1))
         # x = self.outc(x)
-        x = F.normalize(x,dim=1)
-        legend = F.normalize(legend,dim=1)
-        x = torch.sum(x*legend.detach(),dim=1).unsqueeze(1)
+        # x = F.normalize(x,dim=1)
+        # legend = F.normalize(legend,dim=1)
+        x = x*legend
         x = self.outc(x)
         x = torch.sigmoid(x)
         return x

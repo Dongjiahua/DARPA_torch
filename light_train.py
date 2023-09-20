@@ -18,11 +18,11 @@ def parse_args():
     parser.add_argument('--val_data', type=str, default="/media/jiahua/FILE/uiuc/NCSA/processed/validation",  help='Root val data path')
     parser.add_argument('--fct_cfg', type=str, default="/media/jiahua/FILE/uiuc/NCSA/DARPA_torch/config/fct.yaml", help='fct config')
     parser.add_argument('--out_dir', type=str, default="output_unet", help='output_dir')
-    parser.add_argument('--model', type=str, default="unet_sim", help='backbone model')
+    parser.add_argument('--model', type=str, default="fct", help='backbone model')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size.')
     parser.add_argument('--lr', type=float, default=0.001, help='Initial learning rate for sgd.')
     parser.add_argument('--workers', default=8, type=int, help='Number of data loading workers.')
-    parser.add_argument('--epochs', type=int, default=10, help='Total training epochs.')
+    parser.add_argument('--epochs', type=int, default=30, help='Total training epochs.')
     parser.add_argument('--pretrained', action='store_true', help='Whether use pretrained model.')
     parser.add_argument('--freeze', action='store_true',  help='Whether freeze layers.')
 

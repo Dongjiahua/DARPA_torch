@@ -35,7 +35,7 @@ class DetData(data.Dataset):
         seg_img: segmentation image (3,224,224)
     '''
     def __init__(self, data_path=training_path,type="poly",range=None):
-        self.image_size = (112,112)
+        self.image_size = (224,224)
         self.data_transforms = transforms.Compose([
         transforms.Resize(self.image_size),
         transforms.ToTensor(),

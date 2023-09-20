@@ -41,6 +41,7 @@ class DARPA_DET(pl.LightningModule):
         with EventStorage() as storage:
             output = self.model(map, legend,instance)
         update_channel_ap_metrics(output[:,0,...], gt_keypoints, self.ap_metrics)
+        # seg[seg<0.1]=-1
         loss = self.criterion(output, seg)
         return loss
     
@@ -65,7 +66,7 @@ class DARPA_DET(pl.LightningModule):
         # pred = torch.sigmoid(output)
         gt_keypoints = batch["keypoints"]
         update_channel_ap_metrics(output[:,0,...], gt_keypoints, self.val_ap_metrics)
-        if self.args.out_dir!="":
+        if self.args.out_dir!="" and batch_idx%10==0:
             visualize_pred(batch, output, batch_idx, self.current_epoch, self.args.out_dir)
         
         loss = self.criterion(output, seg)

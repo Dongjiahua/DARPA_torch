@@ -158,19 +158,10 @@ class FsodRCNN(nn.Module):
         # else:
         #     gt_instances = None
 
-        # support branches
-        support_bboxes_ls = []
 
-
-
-        features_dict = {}
 
         x,y = self.backbone.forward_with_two_branch(images, support_images)['res4']
 
-        detector_loss_cls = []
-        detector_loss_box_reg = []
-        rpn_loss_rpn_cls = []
-        rpn_loss_rpn_loc = []
         
         query_images = ImageList.from_tensors([images[i] for i in range(len(images))])
         query_features_res4 = x 
@@ -179,8 +170,9 @@ class FsodRCNN(nn.Module):
         pos_support_features = y
         pos_support_features_pool = pos_support_features.mean(dim=[2, 3], keepdim=True)
         #TODO: check the correctness of the following line
-        # pos_correlation = query_features_res4*pos_support_features_pool.detach() # attention map
+        pos_correlation = query_features_res4*pos_support_features_pool # attention map
         pos_map_out = self.final_out(torch.nn.functional.interpolate(query_features_res4,size=(256,256),mode="bilinear"))
+        pos_map_out = torch.sigmoid(pos_map_out)
         return pos_map_out
         pos_features = {'res4': pos_correlation} 
         # query_gt_instances = instances
