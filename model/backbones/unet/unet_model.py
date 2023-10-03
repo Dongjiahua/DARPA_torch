@@ -52,6 +52,7 @@ class UNet(nn.Module):
 class MAP_UNet(nn.Module):
     def __init__(self, args):
         super(MAP_UNet, self).__init__()
+        self.args = args
         freeze = args.freeze
         pretrained = args.pretrained
         n_channels = 6
@@ -66,16 +67,19 @@ class MAP_UNet(nn.Module):
         self.unet.inc = (DoubleConv(n_channels, 64))
         self.unet.outc = (OutConv(64, n_classes))
     
-    def forward(self, x, legend, instance):
+    def forward(self, batch):
+        out_size = 256//self.args.patches
+        x, legend= batch['map_img'], batch['legend_img']
         x = torch.cat([x,legend],dim=1)
         x = self.unet(x)
-        x = F.interpolate(x,size=(256,256),mode="bilinear")
+        x = F.interpolate(x,size=(out_size,out_size),mode="bilinear")
         x = torch.sigmoid(x)
         return x
     
 class Sim_UNet(nn.Module):
     def __init__(self, args):
         super(Sim_UNet, self).__init__()
+        self.args = args
         freeze = args.freeze
         pretrained = args.pretrained
         n_channels = 3
@@ -91,18 +95,23 @@ class Sim_UNet(nn.Module):
         self.unet.outc = nn.Identity()
         import copy 
         self.unet_t = copy.deepcopy(self.unet)
-        for param in self.unet_t.parameters():
-            param.requires_grad = False
+        # for param in self.unet_t.parameters():
+        #     param.requires_grad = False
+        # self.unet.inc = (DoubleConv(6, 64))
         self.outc = OutConv(64, n_classes)
     
-    def forward(self, x, legend, instance):
+    def forward(self, batch):
+        out_size = 256//self.args.patches
+        x, legend= batch['map_img'], batch['legend_img']
+    
+        # x = torch.cat([x,legend],dim=1)
         legend = F.interpolate(legend,size=(32,32),mode="bilinear")
         x = self.unet(x)
-        with torch.no_grad():
-            legend = self.unet_t(legend)
-        # legend = self.unet_t(legend)
+        # with torch.no_grad():
+        #     legend = self.unet_t(legend)
+        legend = self.unet_t(legend)
         # x = torch.cat([x,legend],dim=1)
-        x = F.interpolate(x,size=(256,256),mode="bilinear")
+        x = F.interpolate(x,size=(out_size,out_size),mode="bilinear")
         legend = F.adaptive_avg_pool2d(legend, (1,1))
         # x = self.outc(x)
         # x = F.normalize(x,dim=1)

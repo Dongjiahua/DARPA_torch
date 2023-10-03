@@ -4,3 +4,5 @@ lightning_logs
 *.DS_Store
 output*
 heat_out
+*.csv
+*.png

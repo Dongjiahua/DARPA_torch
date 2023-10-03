@@ -72,8 +72,7 @@ max(y_coord))
 
                 map_im = cv2.imread(mapPath)
 
-                precision, recall, f_score = feature_f_score(map_im, predicted_seg_im[:,:,0], truSeg_im[:,:,0], feat
-ure_type ='poly',
+                precision, recall, f_score = feature_f_score(map_im, predicted_seg_im[:,:,0], truSeg_im[:,:,0], feature_type ='poly',
                                                      legend_coor=legend_coor, min_valid_range=.25,
                                                      difficult_weight=.7, set_false_as='hard')
 

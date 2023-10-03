@@ -177,14 +177,14 @@ def feature_f_score(map_image, predicted_raster, true_raster, feature_type ='pol
 
     # plot: overlay the true and predicted values on the map image
     if plot:
-        im_copy=img.copy()
+        im_copy=map_image.copy()
         for center in np.argwhere(predicted_raster==1):
             cv2.circle(im_copy, (center[1], center[0]), 1, (0,255,0), -1) # green
         print('Predicted raster overlayed on map image:')
         plt.rcParams["figure.figsize"] = (15,22)
         plt.imshow(im_copy)
         plt.show()
-        im_copy=img.copy()
+        im_copy=map_image.copy()
         for center in np.argwhere(true_raster==1):
             cv2.circle(im_copy, (center[1], center[0]), 1, (255,0,0), -1) # red
         print('True raster overlayed on map image:')

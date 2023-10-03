@@ -8,8 +8,32 @@ import PIL
 import os 
 from detectron2.structures import Boxes, ImageList, Instances
 from utils.heatmap import generate_channel_heatmap
+from data.base import BaseData
+
 training_path = "/media/jiahua/FILE/uiuc/NCSA/processed/training"
 validation_path = "/media/jiahua/FILE/uiuc/NCSA/processed/validation"
+
+def crop_RGBA(image):
+    """
+    Crop a RGBA image's transparent border.
+    
+    Parameters:
+        image (PIL.Image.Image): Input RGBA image.
+    
+    Returns:
+        np.ndarray: Cropped image.
+    """
+    image_array = np.array(image)
+    mask = image_array[:,:,3] != 0
+    
+    # Getting the bounding box
+    x_nonzero, y_nonzero = np.nonzero(mask)
+    x_min, x_max = np.min(x_nonzero), np.max(x_nonzero)
+    y_min, y_max = np.min(y_nonzero), np.max(y_nonzero)
+    
+    return Image.fromarray(image_array[x_min:x_max+1, y_min:y_max+1, :]).resize(mask.shape[:2])
+
+# optimize the crop_RGBA code:
 
 class metric:
     def __init__(self) -> None:
@@ -27,38 +51,25 @@ class metric:
         self.total = 0
         self.count = 0
         
-class DetData(data.Dataset):
+class DetData(BaseData):
     '''
     return:
         map_img: map image (3,224,224)
         legend_img: legend image (3,224,224)
         seg_img: segmentation image (3,224,224)
     '''
-    def __init__(self, data_path=training_path,type="poly",range=None):
-        self.image_size = (224,224)
-        self.data_transforms = transforms.Compose([
-        transforms.Resize(self.image_size),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225]),
-        ])
-        self.root = data_path
-        self.type = type 
-        map_path = os.listdir(os.path.join(self.root,self.type,"map_patches"))
-        legend_path = ['_'.join(x.split('_')[0:-2])+'.png' for x in map_path]
-        
-        if range is not None:
-            map_path = map_path[range[0]:range[1]]
-            legend_path = legend_path[range[0]:range[1]]
-        self.map_path = [os.path.join(self.root,self.type,"map_patches",x) for x in map_path]
-        self.legend_path = [os.path.join(self.root,self.type,"legend",x) for x in legend_path]
-        self.seg_path = [os.path.join(self.root,self.type,"seg_patches",x) for x in map_path]
         
     def __getitem__(self, index):
         map_img = Image.open(self.map_path[index])
-        legend_img = Image.open(self.legend_path[index])
+        legend_img = self.get_front_legend(self.legend_path[index])
         seg_img = Image.open(self.seg_path[index])
-  
+        
+        front_array = np.array(legend_img)
+        front_array[front_array[:,:,3]==0,:] = 255
+        legend_img = Image.fromarray(front_array).convert("RGB")
+        
+
+        img_size = np.array(map_img).shape[:2]
         seg_img = np.array(seg_img)
         # origin_seg = np.array(seg_img)
         assert self.type=="point"
@@ -86,36 +97,15 @@ class DetData(data.Dataset):
             "map_img": map_img,
             "legend_img": legend_img,
             "seg_img": seg_img,
-            "instance": instance,
-            "keypoints": keypoints
+            # "instance": instance,
+            "keypoints": keypoints,
+            "metadata":{
+                "img_size": img_size,
+            }
         }
         return return_dict
 
-    def get_seg_from_bbox(self,point_annotation,seg_img):
-        for bbox in point_annotation:
-            seg_img[int(bbox[1]):int(bbox[3]),int(bbox[0]):int(bbox[2])] = 1
-        return seg_img
     
-    def get_bbox(self,seg_img,frac = 0.05):
-        '''
-        return:
-            point_annotation: (N,2)
-        '''
-
-        points = np.array(np.where(seg_img==1)).T
-        # if len(points.shape)==1:
-        #     points = points.reshape(1,-1)
-        # print(points.shape)
-        
-        # use boxes around the points as annotations
-        point_annotation = np.zeros((len(points),4))
-        for i,point in enumerate(points):
-            y, x = point[0],point[1]
-            range = int(seg_img.shape[0]*frac)
-            point_annotation[i,:] = [x-range,y-range,x+range,y+range]
-        point_annotation[point_annotation>=seg_img.shape[0]] = seg_img.shape[0]
-        point_annotation[point_annotation<0] = 0
-        return point_annotation, points[:,[1,0]]
     
     def __len__(self):
         return len(self.map_path)
@@ -125,8 +115,10 @@ def collect_fn_det(batch):
     dics = batch
     return_dict = {}
     for k in dics[0].keys():
-        if k!="instance" and k!="keypoints":
-            return_dict[k] = torch.stack([dic[k] for dic in dics],dim=0)
-        else:
+        if k=="instance" or k =="keypoints":
             return_dict[k] = [dic[k] for dic in dics]
+        elif k=="metadata":
+            return_dict[k] = dics[0][k]
+        else:
+            return_dict[k] = torch.stack([dic[k] for dic in dics],dim=0)
     return return_dict
