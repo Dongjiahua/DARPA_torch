@@ -55,7 +55,7 @@ def train():
 
     working_dir = "/media/jiahua/FILE/uiuc/NCSA/all_patched/validation_shirui"
     
-    model = DARPA_DET.load_from_checkpoint("/media/jiahua/FILE/uiuc/NCSA/DARPA_torch/exp/lightning_logs/val_cat/checkpoints/epoch=14-step=11760.ckpt",args=args)
+    model = DARPA_DET.load_from_checkpoint("/media/jiahua/FILE/uiuc/NCSA/DARPA_torch/exp/lightning_logs/version_436/checkpoints/epoch=13-step=5488.ckpt",args=args)
     model = model.cuda()
     model.eval()
     

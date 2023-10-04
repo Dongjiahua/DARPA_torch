@@ -58,15 +58,36 @@ class DetData(BaseData):
         legend_img: legend image (3,224,224)
         seg_img: segmentation image (3,224,224)
     '''
+    def __init__(self, data_path="",type="poly",args=None,  data_range=None, phase=None, end=None):
+        super().__init__(data_path,type,args,data_range)
+        filtered_index = []
+        self.phase=  phase
+        if end is not None:
+            for i in range(len(self.map_path)):
+                if self.legend_path[i].endswith(end):
+                    filtered_index.append(i)
+        
+            print("filtered index: ",len(filtered_index))
+            self.map_path = [self.map_path[i] for i in filtered_index]
+            self.legend_path = [self.legend_path[i] for i in filtered_index]
+            self.seg_path = [self.seg_path[i] for i in filtered_index]
+        assert phase is not None
+        if phase=="train":
+            self.data_transforms = transforms.Compose([
+                transforms.Resize(self.image_size),
+                # transforms.ColorJitter(brightness=0.5, contrast=0.3, saturation=0.3, hue=0.3),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                        std=[0.229, 0.224, 0.225]),
+            ])      
         
     def __getitem__(self, index):
+        index = index%len(self.map_path)
         map_img = Image.open(self.map_path[index])
         legend_img = self.get_front_legend(self.legend_path[index])
         seg_img = Image.open(self.seg_path[index])
         
-        front_array = np.array(legend_img)
-        front_array[front_array[:,:,3]==0,:] = 255
-        legend_img = Image.fromarray(front_array).convert("RGB")
+        legend_img = self.RGBA_to_RGB(legend_img)
         
 
         img_size = np.array(map_img).shape[:2]
@@ -108,6 +129,8 @@ class DetData(BaseData):
     
     
     def __len__(self):
+        if self.phase=="train":
+            return len(self.map_path)*5
         return len(self.map_path)
 
 def collect_fn_det(batch):

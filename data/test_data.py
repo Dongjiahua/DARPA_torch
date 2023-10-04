@@ -67,7 +67,7 @@ class TestData(data.Dataset):
     
     def __getitem__(self, index):
         map_img = Image.open(self.root[index])
-        legend_img = self.get_front_legend(self.legend_path[index])
+        legend_img = self.get_front_legend(self.legendPath)
         front_array = np.array(legend_img)
         front_array[front_array[:,:,3]==0,:] = 255
         legend_img = Image.fromarray(front_array).convert("RGB")

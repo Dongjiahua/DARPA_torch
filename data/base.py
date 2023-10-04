@@ -51,14 +51,14 @@ class metric:
         self.total = 0
         self.count = 0
         
-class DetData(data.Dataset):
+class BaseData(data.Dataset):
     '''
     return:
         map_img: map image (3,224,224)
         legend_img: legend image (3,224,224)
         seg_img: segmentation image (3,224,224)
     '''
-    def __init__(self, data_path=training_path,type="poly",args=None, range = None):
+    def __init__(self, data_path="",type="poly",args=None, data_range = None):
         if args.patches>1:
             self.image_size = (256,256)
         else:
@@ -74,9 +74,9 @@ class DetData(data.Dataset):
         map_path = os.listdir(os.path.join(self.root,self.type,"map_patches"))
         legend_path = ['_'.join(x.split('_')[0:-2])+'.png' for x in map_path]
         
-        if range is not None:
-            map_path = map_path[range[0]:range[1]]
-            legend_path = legend_path[range[0]:range[1]]
+        if data_range is not None:
+            map_path = map_path[data_range[0]:data_range[1]]
+            legend_path = legend_path[data_range[0]:data_range[1]]
         self.map_path = [os.path.join(self.root,self.type,"map_patches",x) for x in map_path]
         self.legend_path = [os.path.join(self.root,self.type,"legend",x) for x in legend_path]
         self.seg_path = [os.path.join(self.root,self.type,"seg_patches",x) for x in map_path]
@@ -88,7 +88,7 @@ class DetData(data.Dataset):
         sharpend_legend = Image.fromarray(sharpend_legend)
         bgrm_legend = remove_bg(sharpend_legend)
         bgrm_legend = crop_RGBA(bgrm_legend)
-        import matplotlib.pyplot as plt
+        # import matplotlib.pyplot as plt
         # plt.imshow(bgrm_legend)
         # plt.show()
         # assert False

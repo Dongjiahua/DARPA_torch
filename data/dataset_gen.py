@@ -9,31 +9,10 @@ import os
 from detectron2.structures import Boxes, ImageList, Instances
 from utils.heatmap import generate_channel_heatmap
 import pandas as pd
-from data.data_paint import *
-training_path = "/media/jiahua/FILE/uiuc/NCSA/processed/training"
-validation_path = "/media/jiahua/FILE/uiuc/NCSA/processed/validation"
 import matplotlib.pyplot as plt
+from data.data_paint import *
+from data.base import BaseData
 
-
-def crop_RGBA(image):
-    """
-    Crop a RGBA image's transparent border.
-    
-    Parameters:
-        image (PIL.Image.Image): Input RGBA image.
-    
-    Returns:
-        np.ndarray: Cropped image.
-    """
-    image_array = np.array(image)
-    mask = image_array[:,:,3] != 0
-    
-    # Getting the bounding box
-    x_nonzero, y_nonzero = np.nonzero(mask)
-    x_min, x_max = np.min(x_nonzero), np.max(x_nonzero)
-    y_min, y_max = np.min(y_nonzero), np.max(y_nonzero)
-    
-    return Image.fromarray(image_array[x_min:x_max+1, y_min:y_max+1, :]).resize(mask.shape[:2])
 
 # optimize the crop_RGBA code:
 
@@ -56,21 +35,22 @@ class metric:
         self.total = 0
         self.count = 0
         
-class GENData(data.Dataset):
+class GENData(BaseData):
     '''
     return:
         map_img: map image (3,224,224)
         legend_img: legend image (3,224,224)
         seg_img: segmentation image (3,224,224)
     '''
-    def __init__(self, data_path=training_path,type="poly",args=None, size=10000):
+    def __init__(self, data_path="",type="poly",args=None, size=10000, end=None):
         if args.patches>1:
             self.image_size = (256,256)
         else:
             self.image_size = (args.input_size,args.input_size)
+            
         self.data_transforms = transforms.Compose([
             transforms.Resize(self.image_size),
-            
+            transforms.ColorJitter(brightness=0.5, contrast=0.3, saturation=0.3, hue=0.3),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                     std=[0.229, 0.224, 0.225]),
@@ -80,7 +60,7 @@ class GENData(data.Dataset):
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
             transforms.ColorJitter(brightness=0.5, contrast=0.3, saturation=0.2, hue=0.3),
-            transforms.GaussianBlur(3, sigma=(0.1, 2.0)),
+            transforms.GaussianBlur(3, sigma=(0.1, 2.0))
         ])
         self.root = data_path
         self.type = type 
@@ -100,11 +80,21 @@ class GENData(data.Dataset):
         #             if point_legend in k:
         #                 used_legend.append(k)
         #                 break
-        used_legend = legend_path
-        print(f"median score: {np.median(np.array(all_scores))}")
+        used_legend = []
+        # print(f"median score: {np.median(np.array(all_scores))}")
+        point_legends = []
+        
+        for legend in legend_path:
+            if end is None or legend.endswith(end):
+                point_legend = legend.split(".")[-2]
+                # print(legend,point_legend,len(point_legend.split("_")))
+                point_legend = point_legend.split("_")[-2]+"_"+point_legend.split("_")[-1]
+                if point_legend not in point_legends:
+                    point_legends.append(point_legend)
+                    used_legend.append(os.path.join(self.root,self.type,"legend",legend))
+        # print(point_legends)
         frequency = size//len(used_legend)
         for legend in used_legend:
-            legend = os.path.join(self.root,self.type,"legend",legend)
             self.legend_path += [legend]*frequency
         # if range is not None:
         #     map_path = map_path[range[0]:range[1]]
@@ -115,35 +105,22 @@ class GENData(data.Dataset):
     
     def get_pairs(self, idx):
         legend_path = self.legend_path[idx]
-        point_legend = legend_path.split(".")[0]
-        point_legend = point_legend.split("_")[-3]+"_"+point_legend.split("_")[-2]+"_"+point_legend.split("_")[-1]
+        point_legend = legend_path.split(".")[-2]
+        point_legend = point_legend.split("_")[-2]+"_"+point_legend.split("_")[-1]
         while True:
             map_path = np.random.choice(self.map_path)
-            map_legend = map_path.split(".")[0]
+            map_legend = map_path.split(".")[-2]
             map_legend = "_".join(map_legend.split("_")[0:-2])
-            map_legend = map_legend.split("_")[-3]+"_"+map_legend.split("_")[-2]+"_"+map_legend.split("_")[-1]
+            map_legend = map_legend.split("_")[-2]+"_"+map_legend.split("_")[-1]
             if map_legend != point_legend:
                 break
         
         map_path = os.path.join(self.root,self.type,"map_patches",map_path)
         return map_path, legend_path
     
-    def get_front_legend(self,legend_path):
-        sharpend_legend = thresholding(legend_path)
-        # convert color from cv2 -> Image
-        sharpend_legend = cv2.cvtColor(sharpend_legend, cv2.COLOR_BGR2RGB)
-        sharpend_legend = Image.fromarray(sharpend_legend)
-        bgrm_legend = remove_bg(sharpend_legend)
-        bgrm_legend = crop_RGBA(bgrm_legend)
-        import matplotlib.pyplot as plt
-        # plt.imshow(bgrm_legend)
-        # plt.show()
-        # assert False
-        return bgrm_legend 
+
     
     def paint_legend(self,map, legend, img_size):
-        
-
         
         # randomly sample coordinates on the map with threshold distance
         coords = []
@@ -160,21 +137,26 @@ class GENData(data.Dataset):
             if len(coords)==num:
                 break
         # map.save("testx.png")
-        scale0 = np.random.choice([15]*5+[20]*3+[30])
-        scale1 = int(scale0*(1+(np.random.rand()-0.5)*2*0.4))
-        bright = np.random.randint(0,150)
+        scale0 = np.random.choice([15]*3+[30]*3+[40]*3+[50] )
+        scale1 = int(scale0*(1+(np.random.rand()-0.5)*2*0.6))
+        # randomly swap scale0 and scale1
+        if np.random.rand()>0.5:
+            scale0, scale1 = scale1, scale0
+        bright = np.random.randint(0,50)
         for i,coord in enumerate(coords):
             angle = np.random.randint(0,360)
-            rotated_legend = legend.rotate(angle)
             
-            scaled_legend = rotated_legend.resize((scale0,scale1))
+            scaled_legend = legend.resize((scale0,scale1))
             np_img = np.array(scaled_legend)
             mask = np_img[:,:,3]==0
             jittered_img = self.legend_trans(scaled_legend)
             jittered_img = np.array(jittered_img)
+            # print(f"shape: {jittered_img.shape}")
             jittered_img[mask,:] = np.array([225,225,225,0])
+            jittered_img[~mask,3] = int(255*0.9)
             jittered_img[...,:3] = np.clip(jittered_img[...,:3]+bright,0,255)
             scaled_legend = Image.fromarray(jittered_img)
+            scaled_legend = scaled_legend.rotate(angle,expand=True)
             # print(f"map max:{np.max(np.array(map))}, legend max:{np.max(np.array(scaled_legend))}")
             # print
             map = merge_bg(scaled_legend,map,location=(coord[0]-scale0//2,coord[1]-scale1//2))
@@ -196,9 +178,8 @@ class GENData(data.Dataset):
         # origin_seg = np.array(seg_img)
         assert self.type=="point"
         map_img, keypoints = self.paint_legend(map_img, legend_img, img_size)
-        front_array = np.array(legend_img)
-        front_array[front_array[:,:,3]==0,:] = 255
-        legend_img = Image.fromarray(front_array).convert("RGB")
+        legend_img = self.RGBA_to_RGB(legend_img)
+
         # print(np.array(map_img).shape)
         map_img = self.data_transforms(map_img)
         legend_img = self.data_transforms(legend_img)
@@ -208,8 +189,7 @@ class GENData(data.Dataset):
 
         keypoints = torch.tensor(keypoints)
         seg_img = generate_channel_heatmap(seg_img.shape[-2:],keypoints,3,device="cpu")
-        # print(f"map max:{torch.max(map_img)}, legend max:{torch.max(legend_img)}")
-        # print(seg_img.shape)
+
         return_dict = {
             "map_img": map_img,
             "legend_img": legend_img,

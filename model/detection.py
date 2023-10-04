@@ -22,7 +22,7 @@ class DARPA_DET(pl.LightningModule):
         self.count = 0
         self.val_loss_total = 0
         self.val_count = 0
-        ap_thres = [5,10]
+        ap_thres = [5,10,20,40]
         # self.model = MAP_UNet(n_channels=6,n_classes=1,pretrained=args.pretrained,freeze=args.freeze)
         self.train_acc = torchmetrics.Accuracy(task="binary")
         self.val_acc = torchmetrics.Accuracy(task="binary")
@@ -90,6 +90,7 @@ class DARPA_DET(pl.LightningModule):
         self.ap_metrics.reset()
         self.loss_total = 0
         self.count = 0
+        self.scheduler1.step()
     
     def on_validation_epoch_end(self) -> None:
         print(f"val_ap_epoch: {self.val_ap_metrics.compute()}")
@@ -110,7 +111,7 @@ class DARPA_DET(pl.LightningModule):
         # pred = torch.sigmoid(output)
         gt_keypoints = batch["keypoints"]
         update_channel_ap_metrics(output[:,0,...], gt_keypoints, self.val_ap_metrics)
-        if self.args.out_dir!="" and batch_idx%10==0:
+        if self.args.out_dir!="" and batch_idx%1==0:
             visualize_pred(batch, output, batch_idx, self.current_epoch, self.args.out_dir)
             # final_maps = predict_final_map(output)
             # visualize_pred(batch,final_maps.unsqueeze(1),batch_idx,self.current_epoch, self.args.out_dir)
@@ -140,4 +141,5 @@ class DARPA_DET(pl.LightningModule):
         
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        self.scheduler1 = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
         return optimizer

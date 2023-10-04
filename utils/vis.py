@@ -29,7 +29,7 @@ def visualize_pred(batch, output, batch_idx, epoch, out_dir, postix="val"):
     
     # axarr[2].imshow(seg_img,cmap="gray")        
     # plt.show()
-    f.savefig(os.path.join(out_dir,f"epoch_{epoch}_step_{batch_idx}_{postix}.png"))
+    f.savefig(os.path.join(out_dir,f"epoch_{epoch}_step_{postix}_{batch_idx}.png"))
     plt.close(f)
 
 @torch.no_grad()
@@ -62,7 +62,7 @@ def visualize_pred_kpts(batch, output, batch_idx, epoch, out_dir, postix="val"):
     
     # axarr[2].imshow(seg_img,cmap="gray")        
     # plt.show()
-    f.savefig(os.path.join(out_dir,f"epoch_{epoch}_step_{batch_idx}_{postix}.png"))
+    f.savefig(os.path.join(out_dir,f"epoch_{epoch}_step_{postix}_{batch_idx}.png"))
     plt.close(f)
         
 def overlay_image_with_keypoints(images: torch.Tensor, keypoints: List[torch.Tensor], sigma: float=3) -> torch.Tensor:
