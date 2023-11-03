@@ -1,3 +1,10 @@
+## Install
+We suggest using conda for virtual environments.
+Please run the following command to create the environment:
+```
+conda env create -f environment.yml
+```
+## Run
 To use the Map Inference Tool, run the script with the necessary arguments:
 
 ```
