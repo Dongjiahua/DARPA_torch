@@ -1,10 +1,7 @@
-# DARPA_Map_Feature_Extraction
-This is the repo for DARPA AI competition of map feature extraction
+To use the Map Inference Tool, run the script with the necessary arguments:
 
+```
+python inference.py --mapPath "/path/to/your/map.hdf5" --outputPath "/path/to/output/directory" --modelPath "/path/to/your/model.ckpt"
+```
 
-## Implementation with pytorch
-Please run:
-```
-python light_train.py
-```
-See `l ight_train.py` for detailed options through args.
+Make sure to install pytorch and lightning. Other packages are also needed, including einops, h5py, matplotlib, pillow, opencv-python.

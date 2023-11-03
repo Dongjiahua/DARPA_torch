@@ -8,3 +8,4 @@ heat_out
 *.png
 test.py
 test2.py 
+inference

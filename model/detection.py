@@ -3,8 +3,7 @@ import lightning.pytorch as pl
 import torchmetrics
 import torch 
 import os 
-from detectron2.structures import Boxes, ImageList, Instances
-from detectron2.utils.events import EventStorage
+
 from utils.metrics import KeypointAPMetrics,Keypoint,DetectedKeypoint
 from utils.heatmap import get_keypoints_from_heatmap_batch_maxpool
 from typing import Callable, Dict, List, Tuple
@@ -78,8 +77,8 @@ class DARPA_DET(pl.LightningModule):
         
         
         gt_keypoints = batch["keypoints"]
-        with EventStorage() as storage:
-            output = self.model(batch)
+
+        output = self.model(batch)
         # seg[seg<0.1]=-1
         loss = self.criterion(output, batch['seg_img'])
         with torch.no_grad():

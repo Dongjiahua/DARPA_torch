@@ -288,6 +288,7 @@ if __name__ == "__main__":
     parser.add_argument("--mapPath", required=True, help="Path to the hdf5 file.")
     parser.add_argument("--outputPath", required=True, help="Path to save the inference results. ")
     parser.add_argument("--modelPath", default="./inference_model/Unet-attentionUnet.h5", help="Path to the trained model. Default is './inference_model/Unet-attentionUnet.h5'.")
+    
     parser.add_argument('--model', type=str, default="unet_cat", help='backbone model')
     parser.add_argument('--patches', type=int, default=1, help='Patch size.')
     parser.add_argument('--input_size', type=int, default=112, help='Patch size.')
@@ -296,7 +297,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(args)
 
-    #python inference.py --mapPath '/media/jiahua/FILE/uiuc/NCSA/outputForTA4/NV_SilverPeak_321289_1963_62500_geo_mosaic.hdf5' --outputPath '/media/jiahua/FILE/uiuc/NCSA/all_patched/OK_250K_inference' --modelPath '/media/jiahua/FILE/uiuc/NCSA/DARPA_torch/exp/lightning_logs/version_339/checkpoints/epoch=18-step=2964.ckpt'
+    #python inference.py --mapPath '/projects/bbym/shared/data/commonPatchData/256/NV_SilverPeak_321289_1963_62500_geo_mosaic.hdf5' --outputPath './inference' --modelPath './checkpoint.ckpt'
     # model = build_model("/media/jiahua/FILE/uiuc/NCSA/DARPA_torch/config/fct.yaml")
 
         
