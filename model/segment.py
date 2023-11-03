@@ -46,10 +46,8 @@ class DARPA_SEG(pl.LightningModule):
         plt.close(f)
         
     def training_step(self, batch, batch_idx):
-        map, legend, seg = batch['map_img'], batch['legend_img'], batch['seg_img']
-        model_input = torch.cat([map,legend],dim=1)
-        output = self.model(model_input)
-        
+        output = self.model(batch)
+        seg = batch['seg_img']
         output = torch.nn.functional.interpolate(output,size=seg.shape[-2:],mode="nearest")
         
         loss = self.criterion(output, seg)
@@ -61,12 +59,12 @@ class DARPA_SEG(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        map, legend, seg = batch['map_img'], batch['legend_img'], batch['seg_img']
-        model_input = torch.cat([map,legend],dim=1)
-        output = self.model(model_input)
         
+
+        output = self.model(batch)
+        seg = batch['seg_img']
         output = torch.nn.functional.interpolate(output,size=seg.shape[-2:],mode="nearest")
-        if self.args.out_dir!="":
+        if self.args.out_dir!="" and batch_idx%10==0:
             self.visualize_pred(batch,output,batch_idx)
         # image = torch.sigmoid(output[0]).squeeze().cpu().detach().numpy().permute(1,2,0)
         # import matplotlib.pyplot as plt

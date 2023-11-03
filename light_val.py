@@ -6,6 +6,7 @@ import torch
 from model import  DARPA_DET
 from data.dataset import MAPData
 from data.dataset_det import DetData, collect_fn_det
+from data.dataset_balance import BalanceData
 from data.test_data import TestData
 from torch.utils.data import DataLoader
 import torchmetrics
@@ -26,12 +27,22 @@ import gc
 import math 
 import time 
 import csv
+from osgeo import gdal 
+import sys
+
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
+
+# Restore
+def enablePrint():
+    sys.stdout = sys.__stdout__
+    
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_data', type=str,default="/media/jiahua/FILE/uiuc/NCSA/all_patched/all_patched_data/training", help='Root train data path')
     parser.add_argument('--val_data', type=str, default="/media/jiahua/FILE/uiuc/NCSA/all_patched/all_patched_data/validation",  help='Root val data path')
     parser.add_argument('--fct_cfg', type=str, default="/media/jiahua/FILE/uiuc/NCSA/DARPA_torch/config/fct.yaml", help='fct config')
-    parser.add_argument('--out_dir', type=str, default="output_all", help='output_dir')
+    parser.add_argument('--out_dir', type=str, default="", help='output_dir')
     parser.add_argument('--model', type=str, default="unet_cat", help='backbone model')
     parser.add_argument('--patches', type=int, default=1, help='Patch size.')
     parser.add_argument('--input_size', type=int, default=112, help='Patch size.')
@@ -45,7 +56,7 @@ def parse_args():
 
     return parser.parse_args()
 
-    
+symbol = [None]
 def train():
     args = parse_args()
     torch.manual_seed(0)
@@ -55,9 +66,8 @@ def train():
 
     working_dir = "/media/jiahua/FILE/uiuc/NCSA/all_patched/validation_shirui"
     
-    model = DARPA_DET.load_from_checkpoint("/media/jiahua/FILE/uiuc/NCSA/DARPA_torch/exp/lightning_logs/version_436/checkpoints/epoch=13-step=5488.ckpt",args=args)
-    model = model.cuda()
-    model.eval()
+    model = "/media/jiahua/FILE/uiuc/NCSA/DARPA_torch/exp/lightning_logs/version_339/checkpoints/epoch=18-step=2964.ckpt"
+
     
     
     tifPaths = glob(working_dir+'/*.tif')
@@ -65,10 +75,13 @@ def train():
 
     if not os.path.exists(os.path.join(working_dir, 'Inference')):
         os.mkdir(os.path.join(working_dir, 'Inference'))
+    os.makedirs(os.path.join(working_dir, 'Geo'),exist_ok=True)
     count = 0
     polyScore = {}
     f1s = []
+    
     for tifPath in tifPaths:    
+        # if "AR_Maumee" not in tifPath and "CO_Silverton" not in tifPath: continue
         tifFile = tifPath.split('/')[-1]
         jsonFile = tifFile.split('.')[0]+'.json'
 
@@ -77,29 +90,57 @@ def train():
 
         for label_dir in jsonData['shapes']:
             legend = label_dir['label']
-            if legend.endswith('_pt'):
-                
-                print(f"({count+1}/135)",end=' ')
-                score, filename = run(working_dir,model, tifFile, legend, args)
-                if score!=-1:
-                    count+=1
-                    polyScore[filename] = score
-                    f1s.append(score[2])
-                    print(f"Average f1: {np.mean(f1s):.3}, Median f1: {np.median(f1s):.3}, Current f1: {score[2]:.3}")
+            for e in symbol:
+                # print(legend,e)
+                if legend.endswith("pt") and (e is None or legend.endswith(e)) :
+                    
+                    print(f"({count+1}/135)",end=' ')
+                    score, filename = run(working_dir,model, tifFile, legend, args)
+                    if score!=-1:
+                        count+=1
+                        polyScore[filename] = score
+                        f1s.append(score[2])
+                        print(f"Average f1: {np.mean(f1s):.3}, Median f1: {np.median(f1s):.3}, Current f1: {score[2]:.3}")
                     
         prefix = time.strftime("%Y%m%d_%H%M%S", time.localtime())
         csv_file =  f"{prefix}_pt.csv"
         os.makedirs("./exp/csv",exist_ok=True)
-        with open(os.path.join("./exp/csv", csv_file), 'w') as csv_file:
-            writer = csv.writer(csv_file)
-            for key, value in polyScore.items():
-                writer.writerow([key, value])
+    with open(os.path.join("./exp/csv", csv_file), 'w') as csv_file:
+        writer = csv.writer(csv_file)
+        for key, value in polyScore.items():
+            writer.writerow([key, value])
 
     # eval_f1()
 
     
 patch_dims = (256,256)
 
+def write_geoTIFF(tif_file, output, predicted_array):
+
+    # Create an in-memory single-band raster
+    mem_driver = gdal.GetDriverByName('MEM')
+    mem_ds = mem_driver.Create('', predicted_array.shape[1], predicted_array.shape[0], 1, gdal.GDT_Float32)
+    mem_ds.GetRasterBand(1).WriteArray(predicted_array)
+
+    # Transfer georeference information from the GeoTIFF
+    geo_rgb_ds = gdal.Open(tif_file, gdal.GA_ReadOnly)
+    geo_transform = geo_rgb_ds.GetGeoTransform()
+    projection = geo_rgb_ds.GetProjection()
+
+    mem_ds.SetGeoTransform(geo_transform)
+    mem_ds.SetProjection(projection)
+
+    # Save the final georeferenced raster to disk
+    out_driver = gdal.GetDriverByName('GTiff')
+    options = ['COMPRESS=LZW', 'TILED=YES']
+    out_ds = out_driver.CreateCopy(output, mem_ds, options=options)
+
+
+    # Clean up
+    geo_rgb_ds = None
+    mem_ds = None
+    out_ds = None
+    
 def build_patch(working_dir, filename, legend, patch_dims = (256,256)):
     """
     filename = 'VA_Lahore_bm.tif'   
@@ -226,7 +267,9 @@ def run(working_dir, model, tifFile, legend, args):
     if write_filename not in os.listdir(True_Folder):
         print(f"No GT for {write_filename}!", legend)
         return -1,-1
+    
     write_filePath = os.path.join(working_dir, 'Inference', write_filename)
+    write_geo_filePath = os.path.join(working_dir, 'Geo', write_filename)
     # if os.path.isfile(write_filePath):
     #     print(f"Already Finished {write_filename}!", legend)
     #     return
@@ -239,36 +282,53 @@ def run(working_dir, model, tifFile, legend, args):
     patchNames = sorted(glob(os.path.join(working_dir, tifFile.split('.')[0]+'_map_patches/*')))
     legend_path  =os.path.join(working_dir, tifFile.split('.')[0]+'_legend', legend+'.png')
     val_dataset = TestData(patchNames, legend_path, args)
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, drop_last=False,num_workers=8, collate_fn=collect_fn_det)
-    patched_predicted = np.zeros((map_patchs_dims[0], map_patchs_dims[1], 1, 256, 256, 1))
-    index = 0
+    val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, drop_last=False,num_workers=8, collate_fn=collect_fn_det)
 
-    with torch.no_grad():
-        for i, data in enumerate(val_loader):
-            output, keypoints = model(data)
-            for kpts_patches in keypoints:
-                kpts  = kpts_patches[0]
-                dim_i = index//map_patchs_dims[1]
-                
-                dim_j = index%map_patchs_dims[1]
-                for kpt in kpts:
-                    patched_predicted[dim_i, dim_j, 0, int(kpt[1]), int(kpt[0]), 0] = 1
-                index+=1
-                
+    model = DARPA_DET.load_from_checkpoint(model,args=args)
+    t = legend+".png"
+    
+    # train_dataset = BalanceData(data_path=args.train_data,type="point",data_range = None, args=args,size = 10000, phase="train",zero_ratio=0.8, paste_ratio=0.5,end=t)
+    # train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=args.workers, collate_fn=collect_fn_det)
+    for epochs in [0]:
+        patched_predicted = np.zeros((map_patchs_dims[0], map_patchs_dims[1], 1, 256, 256, 1))
+        index = 0
+        
+        # trainer = pl.Trainer(devices=1, max_epochs=epochs if epochs>=1 else 0,precision=32,check_val_every_n_epoch=1,default_root_dir="./exp/")
+        # # trainer.validate(model,val_loader)
+        
+        # trainer.fit(model, train_loader)
+        
+        model = model.cuda()
+        model.eval()
+        with torch.no_grad():
+            for i, data in enumerate(val_loader):
+                output, keypoints = model(data)
+                for kpts_patches in keypoints:
+                    kpts  = kpts_patches[0]
+                    dim_i = index//map_patchs_dims[1]
+                    
+                    dim_j = index%map_patchs_dims[1]
+                    for kpt in kpts:
+                        patched_predicted[dim_i, dim_j, 0, int(kpt[1]), int(kpt[0]), 0] = 1
+                    index+=1
+                    
 
-    patched_predicted = unpatchify(patched_predicted, (map_im_cut_dims[0], map_im_cut_dims[1], 1))
-    patched_predicted = np.pad(patched_predicted, [(shift_coord[0], shift_coord[1]), (shift_coord[2], shift_coord[3]), (0,0)], mode='constant')
-    gc.collect()
-    patched_predicted = patched_predicted.astype(int)
-    masked_img = map_mask(working_dir, tifFile, patched_predicted)
-    del patched_predicted, val_dataset, val_loader
-    gc.collect()
-    # expand one more dimension and repeat the pixel value in the third axis
-    final_seg = np.repeat(masked_img[:, :, np.newaxis], 3, axis=2).astype(np.uint8)
+        patched_predicted = unpatchify(patched_predicted, (map_im_cut_dims[0], map_im_cut_dims[1], 1))
+        patched_predicted = np.pad(patched_predicted, [(shift_coord[0], shift_coord[1]), (shift_coord[2], shift_coord[3]), (0,0)], mode='constant')
+        gc.collect()
+        patched_predicted = patched_predicted.astype(int)
+        masked_img = map_mask(working_dir, tifFile, patched_predicted)
 
-    cv2.imwrite(write_filePath, final_seg)    
+        gc.collect()
+        # expand one more dimension and repeat the pixel value in the third axis
+        final_seg = np.repeat(masked_img[:, :, np.newaxis], 3, axis=2).astype(np.uint8)
+        cv2.imwrite(write_filePath, final_seg)  
+        filePath = os.path.join(working_dir, tifFile) 
+        # write_geoTIFF(filePath,write_geo_filePath,final_seg[:,:,0]) 
+        
+        precision, recall, f_score = single_eval(write_filename)
+        print(f"epoches: {epochs}, precision: {precision:.3}, recall: {recall:.3}, f_score: {f_score:.3}")
     print(f"Finished {write_filename}!", legend)
-    precision, recall, f_score = single_eval(write_filename)
     return (precision, recall, f_score), write_filename
         
         

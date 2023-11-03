@@ -58,14 +58,16 @@ class DetData(BaseData):
         legend_img: legend image (3,224,224)
         seg_img: segmentation image (3,224,224)
     '''
-    def __init__(self, data_path="",type="poly",args=None,  data_range=None, phase=None, end=None):
+    def __init__(self, data_path="",type="poly",args=None,  data_range=None, size=None, phase=None, end=None):
         super().__init__(data_path,type,args,data_range)
         filtered_index = []
+        self.size = size
         self.phase=  phase
         if end is not None:
-            for i in range(len(self.map_path)):
-                if self.legend_path[i].endswith(end):
-                    filtered_index.append(i)
+            for e in end:
+                for i in range(len(self.map_path)):
+                    if self.legend_path[i].endswith(e):
+                        filtered_index.append(i)
         
             print("filtered index: ",len(filtered_index))
             self.map_path = [self.map_path[i] for i in filtered_index]
@@ -84,35 +86,34 @@ class DetData(BaseData):
     def __getitem__(self, index):
         index = index%len(self.map_path)
         map_img = Image.open(self.map_path[index])
-        legend_img = self.get_front_legend(self.legend_path[index])
         seg_img = Image.open(self.seg_path[index])
-        
-        legend_img = self.RGBA_to_RGB(legend_img)
-        
-
         img_size = np.array(map_img).shape[:2]
         seg_img = np.array(seg_img)
         # origin_seg = np.array(seg_img)
-        assert self.type=="point"
-        point_annotation, keypoints = self.get_bbox(seg_img)
-        seg_img = self.get_seg_from_bbox(point_annotation,seg_img)
-        point_annotation[:,[0,2]] = point_annotation[:,[0,2]]/seg_img.shape[1]*self.image_size[0]
-        point_annotation[:,[1,3]] = point_annotation[:,[1,3]]/seg_img.shape[0]*self.image_size[1]
-        boxes = torch.tensor(point_annotation)
-        instance = Instances(self.image_size)
-        instance.gt_boxes = Boxes(boxes)
-        instance.gt_classes = torch.zeros((len(boxes),),dtype=torch.int64)
-
-
+        if self.type=="point":
+            legend_img = self.get_front_legend(self.legend_path[index])
+            legend_img = self.RGBA_to_RGB(legend_img)
+            point_annotation, keypoints = self.get_bbox(seg_img)
+            seg_img = self.get_seg_from_bbox(point_annotation,seg_img)
+            point_annotation[:,[0,2]] = point_annotation[:,[0,2]]/seg_img.shape[1]*self.image_size[0]
+            point_annotation[:,[1,3]] = point_annotation[:,[1,3]]/seg_img.shape[0]*self.image_size[1]
+            boxes = torch.tensor(point_annotation)
+            instance = Instances(self.image_size)
+            instance.gt_boxes = Boxes(boxes)
+            instance.gt_classes = torch.zeros((len(boxes),),dtype=torch.int64)
+            keypoints = torch.tensor(keypoints)
+            seg_img = generate_channel_heatmap(seg_img.shape[-2:],keypoints,3,device="cpu")
+            
+        else:
+            legend_img = Image.open(self.legend_path[index])
+            seg_img = torch.tensor(seg_img).float()
+            keypoints =  torch.tensor([[0,0]])
         map_img = self.data_transforms(map_img)
         legend_img = self.data_transforms(legend_img)
-        seg_img = torch.tensor(seg_img).float()
-
         
 
-        keypoints = torch.tensor(keypoints)
-        seg_img = generate_channel_heatmap(seg_img.shape[-2:],keypoints,3,device="cpu")
-
+        if len(seg_img.shape)==2:
+            seg_img = seg_img.unsqueeze(0)
         # print(seg_img.shape)
         return_dict = {
             "map_img": map_img,
@@ -129,8 +130,9 @@ class DetData(BaseData):
     
     
     def __len__(self):
-        if self.phase=="train":
-            return len(self.map_path)*5
+        if self.phase=="train" and self.size is not None and self.size>len(self.map_path):
+            repeat = self.size//len(self.map_path)
+            return len(self.map_path)*repeat
         return len(self.map_path)
 
 def collect_fn_det(batch):

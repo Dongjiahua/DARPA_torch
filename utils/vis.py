@@ -25,7 +25,7 @@ def visualize_pred(batch, output, batch_idx, epoch, out_dir, postix="val"):
     axarr[0,0].imshow(np.array(map))
     axarr[0,1].imshow(np.array(legend))
     axarr[1,0].imshow(np.array(seg),cmap="gray")
-    axarr[1,1].imshow(np.array(pred),cmap="gray")
+    axarr[1,1].imshow(np.array(pred),cmap="gray",vmin=0,vmax=1)
     
     # axarr[2].imshow(seg_img,cmap="gray")        
     # plt.show()

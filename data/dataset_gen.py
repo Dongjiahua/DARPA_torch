@@ -85,13 +85,16 @@ class GENData(BaseData):
         point_legends = []
         
         for legend in legend_path:
-            if end is None or legend.endswith(end):
-                point_legend = legend.split(".")[-2]
-                # print(legend,point_legend,len(point_legend.split("_")))
-                point_legend = point_legend.split("_")[-2]+"_"+point_legend.split("_")[-1]
-                if point_legend not in point_legends:
-                    point_legends.append(point_legend)
-                    used_legend.append(os.path.join(self.root,self.type,"legend",legend))
+            if end is not None:
+                for e in end:
+                    if legend.endswith(e):
+
+                        point_legend = legend.split(".")[-2]
+                        # print(legend,point_legend,len(point_legend.split("_")))
+                        point_legend = point_legend.split("_")[-2]+"_"+point_legend.split("_")[-1]
+                        if point_legend not in point_legends:
+                            point_legends.append(point_legend)
+                            used_legend.append(os.path.join(self.root,self.type,"legend",legend))
         # print(point_legends)
         frequency = size//len(used_legend)
         for legend in used_legend:

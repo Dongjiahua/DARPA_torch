@@ -55,7 +55,7 @@ class MAP_UNet(nn.Module):
         self.args = args
         freeze = args.freeze
         pretrained = args.pretrained
-        n_channels = 3
+        n_channels = 6
         n_classes = 1
         self.unet = torch.hub.load('milesial/Pytorch-UNet', 'unet_carvana', pretrained=pretrained, scale=0.5)
         if freeze:
@@ -68,11 +68,12 @@ class MAP_UNet(nn.Module):
         self.unet.outc = (OutConv(64, n_classes))
     
     def forward(self, batch):
-        out_size = 256//self.args.patches
+        img_size = batch["metadata"]["img_size"]
+        out_size = (img_size[0]//self.args.patches,img_size[1]//self.args.patches)
         x, legend= batch['map_img'], batch['legend_img']
-        # x = torch.cat([x,legend],dim=1)
+        x = torch.cat([x,legend],dim=1)
         x = self.unet(x)
-        x = F.interpolate(x,size=(out_size,out_size),mode="bilinear")
+        x = F.interpolate(x,size=out_size,mode="bilinear")
         x = torch.sigmoid(x)
         return x
     

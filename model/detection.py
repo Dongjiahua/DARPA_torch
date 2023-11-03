@@ -33,7 +33,11 @@ class DARPA_DET(pl.LightningModule):
         self.val_ap_metrics = KeypointAPMetrics(keypoint_threshold_distances=ap_thres)
         self.max_keypoints = 20
         self.minimal_keypoint_pixel_distance = 5
-    
+        
+    def on_fit_start(self):
+        # By not calling super().on_fit_start(), you might be able to skip the model summary print.
+        pass
+      
     @torch.no_grad()
     def pre_process_batch(self, batch):
         x= batch['map_img']
@@ -54,9 +58,10 @@ class DARPA_DET(pl.LightningModule):
         batch['map_img'] = x
     
     def post_process_batch(self, out, batch):
-        img_size = batch["metadata"]["img_size"]
+        
         if self.args.patches==1:
             return out
+        img_size = batch["metadata"]["img_size"]
         p1_size = img_size[0]//self.args.patches
         p2_size = img_size[1]//self.args.patches
         out = torch.nn.functional.interpolate(out,(p1_size,p2_size),mode="bilinear")
@@ -68,7 +73,7 @@ class DARPA_DET(pl.LightningModule):
         return out
     
     def training_step(self, batch, batch_idx):
-        batch['seg_img'] = batch['seg_img'].unsqueeze(1)
+        batch['seg_img'] = batch['seg_img']
         self.pre_process_batch(batch)
         
         
@@ -98,7 +103,7 @@ class DARPA_DET(pl.LightningModule):
 
         
     def validation_step(self, batch, batch_idx):
-        batch['seg_img'] = batch['seg_img'].unsqueeze(1)
+        batch['seg_img'] = batch['seg_img']
         batch["origin"] = batch["map_img"].clone().detach()
         with torch.no_grad():
             self.pre_process_batch(batch)
@@ -128,14 +133,14 @@ class DARPA_DET(pl.LightningModule):
         keypoints, scores = get_keypoints_from_heatmap_batch_maxpool(
                 output, 20, 5, return_scores=True
             )
-        if self.args.out_dir!="":
-            if not hasattr(self,"count"):
-                self.count = 0
-            batch["seg_img"] = output
-            visualize_pred(batch, output, self.count, self.current_epoch, self.args.out_dir)
-            final_maps = predict_final_map(output)
-            visualize_pred_kpts(batch,final_maps.unsqueeze(1),self.count,self.current_epoch, self.args.out_dir)
-            self.count+=1
+        # if self.args.out_dir!="":
+        #     if not hasattr(self,"count"):
+        #         self.count = 0
+        #     batch["seg_img"] = output
+        #     visualize_pred(batch, output, self.count, self.current_epoch, self.args.out_dir)
+        #     final_maps = predict_final_map(output)
+        #     visualize_pred_kpts(batch,final_maps.unsqueeze(1),self.count,self.current_epoch, self.args.out_dir)
+        #     self.count+=1
         return output, keypoints
         
         

@@ -115,6 +115,8 @@ class BaseData(data.Dataset):
         '''
 
         points = np.array(np.where(seg_img==1)).T
+
+            
         # if len(points.shape)==1:
         #     points = points.reshape(1,-1)
         # print(points.shape)

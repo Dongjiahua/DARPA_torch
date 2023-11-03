@@ -6,3 +6,5 @@ output*
 heat_out
 *.csv
 *.png
+test.py
+test2.py 
