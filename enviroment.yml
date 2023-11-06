@@ -167,4 +167,6 @@ dependencies:
       - yacs==0.1.8
       - yarl==1.9.2
       - zipp==3.16.2
+      - rasterio 
+      - affine
 prefix: /u/jiahuad2/miniconda3/envs/det

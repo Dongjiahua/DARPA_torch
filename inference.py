@@ -11,7 +11,8 @@ from PIL import Image
 from torchvision import transforms
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-
+import rasterio
+import time
 def save_plot_as_png(prediction_result, map_name, legend, outputPath):
     """
     This function visualizes and saves the True Segmentation, Predicted Segmentation, Full Map, 
@@ -56,15 +57,21 @@ def save_plot_as_png(prediction_result, map_name, legend, outputPath):
 
     # Display the true segmentation
     ax0 = plt.subplot(gs[0])
-    ax0.imshow(true_seg)
+    point_size = 10
+
+    true_seg = np.array(true_seg)
+    y_indices, x_indices = np.where(true_seg == 1)
+    ax0.imshow(true_seg, cmap='gray')  # 假设mask是灰度的，所以使用灰度色图
+    ax0.scatter(x_indices, y_indices, s=point_size, color='red', marker='o')
+
     ax0.set_title('True segmentation')
     ax0.axis('off')
 
     # Display the predicted segmentation
     ax1 = plt.subplot(gs[1])
-    ax1.imshow(prediction_result)
-    ax1.set_title('Predicted segmentation')
-    ax1.axis('off')
+    y_indices, x_indices = np.where(prediction_result == 1)
+    ax1.imshow(prediction_result, cmap='gray')  # 假设mask是灰度的，所以使用灰度色图
+    ax1.scatter(x_indices, y_indices, s=point_size, color='red', marker='o')
 
     # Display the full map
     ax2 = plt.subplot(gs[2])
@@ -152,14 +159,26 @@ def save_results(prediction, map_name, legend, outputPath):
     - legend: The legend associated with the prediction.
     - outputPath: The directory where the results should be saved.
     """
+
+    global h5_image
+
     output_image_path = os.path.join(outputPath, f"{map_name}_{legend}.tif")
 
     # Convert the prediction to an image
     # Note: The prediction array may need to be scaled or converted before saving as an image
-    prediction_image = Image.fromarray((prediction*255).astype(np.uint8))
+    # prediction_image = Image.fromarray((prediction*255).astype(np.uint8))
 
     # Save the prediction as a tiff image
-    prediction_image.save(output_image_path, 'TIFF')
+    # prediction_image.save(output_image_path, 'TIFF')
+
+    prediction_image = (prediction*255).astype(np.uint8)
+
+    prediction_image = np.expand_dims(prediction_image, axis=0)
+
+    rasterio.open(output_image_path, 'w', driver='GTiff', compress='lzw',
+                height = prediction_image.shape[1], width = prediction_image.shape[2], count = prediction_image.shape[0], dtype = prediction_image.dtype,
+                crs = h5_image.get_crs(map_name, legend), transform = h5_image.get_transform(map_name, legend)).write(prediction_image)
+
 
 
 class Inference(torch.nn.Module):
@@ -242,6 +261,7 @@ def main(args):
 
     for legend in (map_legends):
         print(f"Processing legend: {legend}")
+        start = time.time()
         full_prediction = np.zeros((map_width, map_height))
         legend_patch = h5_image.get_legend(map_name, legend)
         for row in range(num_rows):
@@ -279,6 +299,7 @@ def main(args):
         # Save the results
         print("Saving results.")
         save_results(masked_prediction, map_name, legend, args.outputPath)
+        print(f"Processing legend: {legend} completed, time: {time.time()-start}")
 
 
     

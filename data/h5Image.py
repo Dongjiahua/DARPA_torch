@@ -1,11 +1,14 @@
 import json
-import logging
+
+import affine
+import h5py
+import numpy as np
+import rasterio
+
 import math
 import os
 import os.path
-import cv2
-import h5py
-import numpy as np
+import logging
 
 
 class H5Image:
@@ -50,19 +53,33 @@ class H5Image:
         :param group: parent folder of image
         :return: dataset of image loaded (numpy array)
         """
-        image = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
-        dset = group.create_dataset(name=name, data=image, shape=image.shape, compression=self.compression)
-        dset.attrs.create('CLASS', 'IMAGE', dtype='S6')
-        dset.attrs.create('IMAGE_MINMAXRANGE', [0, 255], dtype=np.uint8)
-        if len(image.shape) == 3 and image.shape[2] == 3:
-            dset.attrs.create('IMAGE_SUBCLASS', 'IMAGE_TRUECOLOR', dtype='S16')
-        elif len(image.shape) == 2 or image.shape[2] == 1:
-            dset.attrs.create('IMAGE_SUBCLASS', 'IMAGE_GRAYSCALE', dtype='S15')
-        else:
-            raise Exception("Unknown image type")
-        dset.attrs.create('IMAGE_VERSION', '1.2', dtype='S4')
-        dset.attrs.create('INTERLACE_MODE', 'INTERLACE_PIXEL', dtype='S16')
-        return dset
+        with rasterio.open(filename) as src:
+            profile = src.profile
+            image = src.read()
+            if len(image.shape) == 3:
+                if image.shape[0] == 1:
+                    image = image[0]
+                elif image.shape[0] == 3:
+                    image = image.transpose(1, 2, 0)
+            dset = group.create_dataset(name=name, data=image, shape=image.shape, compression=self.compression)
+            dset.attrs.create('CLASS', 'IMAGE', dtype='S6')
+            dset.attrs.create('IMAGE_VERSION', '1.2', dtype='S4')
+            dset.attrs.create('INTERLACE_MODE', 'INTERLACE_PIXEL', dtype='S16')
+            dset.attrs.create('IMAGE_MINMAXRANGE', [0, 255], dtype=np.uint8)
+            if len(image.shape) == 3 and image.shape[2] == 3:
+                dset.attrs.create('IMAGE_SUBCLASS', 'IMAGE_TRUECOLOR', dtype='S16')
+            elif len(image.shape) == 2 or image.shape[2] == 1:
+                dset.attrs.create('IMAGE_SUBCLASS', 'IMAGE_GRAYSCALE', dtype='S15')
+            else:
+                raise Exception("Unknown image type")
+            if 'crs' in profile:
+                txt = src.profile['crs'].to_string()
+                dset.attrs.create('CRS', txt, dtype=f'S{len(txt)}')
+            if 'transform' in profile:
+                txt = affine.dumpsw(src.profile['transform'])
+                dset.attrs.create('TRANSFORM', txt, dtype=f'S{len(txt)}')
+            return dset
+        return None
 
     # add an image to the file
     def add_image(self, filename, folder="", mapname=""):
@@ -133,14 +150,46 @@ class H5Image:
             except ValueError as e:
                 logging.warning(f"Error loading {label} : {e}")
         valid_patches = [[int(k.split('_')[0]), int(k.split('_')[1])] for k in layers_patch.keys()]
-        r1 = min(valid_patches, key=lambda value: int(value[0]))[0]
-        r2 = max(valid_patches, key=lambda value: int(value[0]))[0]
-        c1 = min(valid_patches, key=lambda value: int(value[1]))[1]
-        c2 = max(valid_patches, key=lambda value: int(value[1]))[1]
+        if valid_patches:
+            r1 = min(valid_patches, key=lambda value: int(value[0]))[0]
+            r2 = max(valid_patches, key=lambda value: int(value[0]))[0]
+            c1 = min(valid_patches, key=lambda value: int(value[1]))[1]
+            c2 = max(valid_patches, key=lambda value: int(value[1]))[1]
+            group.attrs.update({'corners': [[r1, c1], [r2, c2]]})
         group.attrs.update({'patches': json.dumps(all_patches)})
         group.attrs.update({'layers_patch': json.dumps(layers_patch)})
         group.attrs.update({'valid_patches': json.dumps(valid_patches)})
-        group.attrs.update({'corners': [[r1, c1], [r2, c2]]})
+
+    def save_image(self, mapname, destination, layer=None):
+        """
+        Save the image to disk. The image is saved as a tiff file, if no layer is given
+        it will write all layers for the map, and the json file to the destination, otherwise
+        it will just write the layer.
+        :param mapname: the name of the map
+        :param destination: the destination directory
+        :param layer: the name of the layer, if empty all layers are written
+        """
+        if not os.path.exists(destination):
+            os.makedirs(destination)
+        if layer is None:
+            self.save_image(mapname, destination, "map")
+            json_data = json.loads(self.h5f[mapname].attrs['json'])
+            json.dump(json_data, open(os.path.join(destination, f"{mapname}.json"), "w"), indent=2)
+            for layer in self.get_layers(mapname):
+                self.save_image(mapname, destination, layer)
+        else:
+            dset = self.h5f[mapname][layer]
+            if dset.ndim == 3:
+                image = dset[...].transpose(2, 0, 1)  # rasterio expects bands first
+            else:
+                image = np.array(dset[...], ndmin=3)
+            if layer == "map":
+                filename = os.path.join(destination, f"{mapname}.tif")
+            else:
+                filename = os.path.join(destination, f"{mapname}_{layer}.tif")
+            rasterio.open(filename, 'w', driver='GTiff', compress='lzw',
+                            height=image.shape[1], width=image.shape[2], count=image.shape[0], dtype=image.dtype,
+                            crs=self.get_crs(mapname, layer), transform=self.get_transform(mapname, layer)).write(image)
 
     # get list of all maps
     def get_maps(self):
@@ -167,6 +216,28 @@ class H5Image:
         :return: size of the map
         """
         return self.h5f[mapname]['map'].shape
+
+    def get_crs(self, mapname, layer='map'):
+        """
+        Returns the crs of the layer (defaults to the map).
+        :param mapname: the name of the map
+        :param layer: the name of the layer, defaults to the map
+        :return: crs of the map
+        """
+        if 'CRS' in self.h5f[mapname][layer].attrs:
+            return rasterio.CRS.from_string(self.h5f[mapname][layer].attrs['CRS'].decode('utf-8'))
+        return None
+
+    def get_transform(self, mapname, layer='map'):
+        """
+        Returns the transform of the layer (defaults to the map).
+        :param mapname: the name of the map
+        :param layer: the name of the layer, defaults to the map
+        :return: transform of the map
+        """
+        if 'TRANSFORM' in self.h5f[mapname][layer].attrs:
+            return affine.loadsw(self.h5f[mapname][layer].attrs['TRANSFORM'].decode('utf-8'))
+        return None
 
     def get_map_corners(self, mapname):
         """
