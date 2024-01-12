@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import rasterio
 import time
-from model_src import RTDETR, SAM, YOLO
+from ultralytics import YOLO
 
 def save_plot_as_png(prediction_result, map_name, legend, outputPath):
     """
@@ -324,9 +324,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(args)
 
-    #python inference.py --mapPath '/projects/bbym/shared/data/commonPatchData/256/NV_SilverPeak_321289_1963_62500_geo_mosaic.hdf5' --outputPath './inference' --modelPath './checkpoint.ckpt'
-    # model = build_model("/media/jiahua/FILE/uiuc/NCSA/DARPA_torch/config/fct.yaml")
-    # python inference.py --mapPath '/media/jiahua/FILE/uiuc/NCSA/outputForTA4/NV_SilverPeak_321289_1963_62500_geo_mosaic.hdf5' --outputPath './inference' --modelPath './best.pt'
+    #python inference.py --mapPath '/projects/bbym/shared/data/commonPatchData/old/256/NV_SilverPeak_321289_1963_62500_geo_mosaic.hdf5' --outputPath './inference' --modelPath './best.pt'
+
 
         
         

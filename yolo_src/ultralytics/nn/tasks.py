@@ -350,7 +350,6 @@ class OneshotDetectionModel(DetectionModel):
         Returns:
             (torch.Tensor): The last output of the model.
         """
-        print(f"x.shape: {x.shape}, legend.shape: {legend.shape}")
         x = torch.cat((x, legend), dim=1)
         y, dt = [], []  # outputs
         for m in self.model:
