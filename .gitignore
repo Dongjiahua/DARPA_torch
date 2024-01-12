@@ -9,3 +9,4 @@ heat_out
 test.py
 test2.py 
 inference
+*.pt

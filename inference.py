@@ -1,7 +1,6 @@
 
 import argparse
 import torch 
-from model import  DARPA_DET
 import os 
 import numpy as np
 import cv2 
@@ -13,6 +12,8 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import rasterio
 import time
+from model_src import RTDETR, SAM, YOLO
+
 def save_plot_as_png(prediction_result, map_name, legend, outputPath):
     """
     This function visualizes and saves the True Segmentation, Predicted Segmentation, Full Map, 
@@ -72,7 +73,10 @@ def save_plot_as_png(prediction_result, map_name, legend, outputPath):
     y_indices, x_indices = np.where(prediction_result == 1)
     ax1.imshow(prediction_result, cmap='gray')  # 假设mask是灰度的，所以使用灰度色图
     ax1.scatter(x_indices, y_indices, s=point_size, color='red', marker='o')
-
+    
+    ax1.set_title('Pred segmentation')
+    ax1.axis('off')
+    
     # Display the full map
     ax2 = plt.subplot(gs[2])
     ax2.imshow(full_map)
@@ -184,38 +188,41 @@ def save_results(prediction, map_name, legend, outputPath):
 class Inference(torch.nn.Module):
     def __init__(self, model, args) -> None:
         super().__init__()
-        self.data_transforms = transforms.Compose([
-            transforms.Resize((args.input_size,args.input_size)),
-            # transforms.ColorJitter(brightness=0.5, contrast=0.3, saturation=0.3, hue=0.3),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                    std=[0.229, 0.224, 0.225]),
-        ])    
         self.model = model
         
-    def process_image(self,image):
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)   
+    def process_image(self,image):  
         image = Image.fromarray(image)
-        image = self.data_transforms(image).unsqueeze(0)
+        # zero pad the image to make it square, the length of the longer side, pad on the right and bottom
+        if image.width != image.height:
+            if image.width > image.height:
+                pad = (0, 0, 0, image.width - image.height)
+            elif image.width < image.height:
+                pad = (0, 0, image.height - image.width,0)
+                
+            image = transforms.functional.pad(image, pad, 0, 'constant')         
         return image
         
     
     def forward(self, legend_patch, map_patch):
         img_size = map_patch.shape[:2]
+
         legend_patch = self.process_image(legend_patch)
         map_patch = self.process_image(map_patch)
 
+
         patched_predicted = np.zeros(img_size)
-        batch = {
-            "map_img": map_patch,
-            "legend_img": legend_patch,
-            "metadata":{"img_size": img_size}
+        input = {
+            "img": map_patch,
+            "legend": legend_patch
         }
-        output, keypoints = self.model(batch)
-        for kpts_patches in keypoints:
-            kpts  = kpts_patches[0]
-            
-            for kpt in kpts:
+        output = self.model(input, verbose=False)[0].boxes
+
+        xywh = output.xywh
+        cls = output.cls.cpu().numpy()
+        kpts = xywh.cpu().numpy()[:,:2]
+        kpts = np.round(kpts).astype(int)
+        for i, kpt in enumerate(kpts):
+            if int(cls[i]) == 0 and kpt[0] >= 0 and kpt[0] < img_size[1] and kpt[1] >= 0 and kpt[1] < img_size[0]:
                 patched_predicted[int(kpt[1]), int(kpt[0])] = 1
         
         return patched_predicted
@@ -254,10 +261,9 @@ def main(args):
     num_cols = math.ceil(map_height / h5_image.patch_size)
     
     # Build the Inference model
-    model = DARPA_DET.load_from_checkpoint(args.modelPath,args=args)
+    model = YOLO(args.modelPath)
     model = Inference(model,args)
-    model = model.cuda()
-    model.eval()    
+    # model.eval()    
 
     for legend in (map_legends):
         print(f"Processing legend: {legend}")
@@ -320,6 +326,7 @@ if __name__ == "__main__":
 
     #python inference.py --mapPath '/projects/bbym/shared/data/commonPatchData/256/NV_SilverPeak_321289_1963_62500_geo_mosaic.hdf5' --outputPath './inference' --modelPath './checkpoint.ckpt'
     # model = build_model("/media/jiahua/FILE/uiuc/NCSA/DARPA_torch/config/fct.yaml")
+    # python inference.py --mapPath '/media/jiahua/FILE/uiuc/NCSA/outputForTA4/NV_SilverPeak_321289_1963_62500_geo_mosaic.hdf5' --outputPath './inference' --modelPath './best.pt'
 
         
         
