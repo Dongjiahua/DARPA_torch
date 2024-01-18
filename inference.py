@@ -184,14 +184,20 @@ def save_results(prediction, map_name, legend, outputPath):
                 crs = h5_image.get_crs(map_name, legend), transform = h5_image.get_transform(map_name, legend)).write(prediction_image)
 
 
-
-class Inference(torch.nn.Module):
-    def __init__(self, model, args) -> None:
+class OneshotYOLO(torch.nn.Module):
+    def __init__(self, ) -> None:
         super().__init__()
-        self.model = model
+        self.model = None 
+    
+    def eval(self):
+        return 
+        
+    def load(self, path):
+        self.model = YOLO(path)
         
     def process_image(self,image):  
-        image = Image.fromarray(image)
+        if type(image)==np.ndarray:
+            image = Image.fromarray(image)
         # zero pad the image to make it square, the length of the longer side, pad on the right and bottom
         if image.width != image.height:
             if image.width > image.height:
@@ -203,33 +209,49 @@ class Inference(torch.nn.Module):
         return image
         
     
-    def forward(self, legend_patch, map_patch):
-        img_size = map_patch.shape[:2]
+    def forward(self, map_patch,legend_patch):
+        if self.model is None: 
+            raise NotImplementedError("The model hasn't been build yet")
+        if type(map_patch)==np.ndarray and len(map_patch.shape)==4:
+            map_patch = [map_patch[i] for i in range(map_patch.shape[0])]
+            img_size = map_patch[0].shape[:2]
+            legend_patch = [self.process_image(legend_patch[i]) for i in range(len(legend_patch))]
+            map_patch = [self.process_image(map_patch[i]) for i in range(len(map_patch))]
+        if type(map_patch)!=list:
+            if type(map_patch)==np.ndarray:
+                img_size = map_patch.shape[:2]
+            elif type(map_patch)==Image.Image:
+                img_size = np.array(map_patch).shape[:2]
+            legend_patch = self.process_image(legend_patch)
+            map_patch = self.process_image(map_patch)
 
-        legend_patch = self.process_image(legend_patch)
-        map_patch = self.process_image(map_patch)
-
-
-        patched_predicted = np.zeros(img_size)
+        
         input = {
             "img": map_patch,
             "legend": legend_patch
         }
-        output = self.model(input, verbose=False)[0].boxes
+        output = self.model(input, verbose=False)
+        predicted = []
+        patched_predicted = np.zeros(img_size)
+        for i in range(len(output)):
+            boxes = output[i].boxes
+            xywh = boxes.xywh
+            cls = boxes.cls.cpu().numpy()
+            kpts = xywh.cpu().numpy()[:,:2]
+            kpts = np.round(kpts).astype(int)
+            for i, kpt in enumerate(kpts):
+                if int(cls[i]) == 0 and kpt[0] >= 0 and kpt[0] < img_size[1] and kpt[1] >= 0 and kpt[1] < img_size[0]:
+                    patched_predicted[int(kpt[1]), int(kpt[0])] = 1
+            predicted.append(patched_predicted)
+        if type(map_patch)==list:
+            return predicted
+        else:
+            return predicted[0]
 
-        xywh = output.xywh
-        cls = output.cls.cpu().numpy()
-        kpts = xywh.cpu().numpy()[:,:2]
-        kpts = np.round(kpts).astype(int)
-        for i, kpt in enumerate(kpts):
-            if int(cls[i]) == 0 and kpt[0] >= 0 and kpt[0] < img_size[1] and kpt[1] >= 0 and kpt[1] < img_size[0]:
-                patched_predicted[int(kpt[1]), int(kpt[0])] = 1
-        
-        return patched_predicted
         
         
-def perform_inference(legend_patch, map_patch, model):
-    return model(legend_patch, map_patch)
+def perform_inference(map_patch, legend_patch, model):
+    return model(map_patch, legend_patch)[0]
 
 def main(args):
     """
@@ -261,8 +283,9 @@ def main(args):
     num_cols = math.ceil(map_height / h5_image.patch_size)
     
     # Build the Inference model
-    model = YOLO(args.modelPath)
-    model = Inference(model,args)
+
+    model = OneshotYOLO()
+    model.load(args.modelPath)
     # model.eval()    
 
     for legend in (map_legends):
@@ -274,7 +297,7 @@ def main(args):
             for col in range(num_cols):
                 map_patch = h5_image.get_patch(row, col, map_name)
 
-                prediction = perform_inference(legend_patch, map_patch, model)
+                prediction = perform_inference(map_patch, legend_patch, model)
                 # print(f"Prediction for patch ({row}, {col}) completed.")
 
                 
@@ -322,7 +345,17 @@ if __name__ == "__main__":
     parser.add_argument('--pretrained', action='store_true', help='Whether use pretrained model.')
     parser.add_argument('--freeze', action='store_true',  help='Whether freeze layers.')
     args = parser.parse_args()
-    main(args)
+    if os.path.isdir(args.mapPath):
+        paths = os.listdir(args.mapPath)
+        paths = [os.path.join(args.mapPath, path) for path in paths]
+        for path in paths:
+            args.mapPath = path
+            try:
+                main(args)
+            except:
+                continue
+    else:
+        main(args)
 
     #python inference.py --mapPath '/projects/bbym/shared/data/commonPatchData/old/256/NV_SilverPeak_321289_1963_62500_geo_mosaic.hdf5' --outputPath './inference' --modelPath './best.pt'
 

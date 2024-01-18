@@ -683,7 +683,7 @@ class LetterBox:
         if self.center:
             dw /= 2  # divide padding into 2 sides
             dh /= 2
-
+        # print(shape, new_unpad)
         if shape[::-1] != new_unpad:  # resize
             img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
         top, bottom = int(round(dh - 0.1)) if self.center else 0, int(round(dh + 0.1))

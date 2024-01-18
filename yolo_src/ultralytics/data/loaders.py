@@ -422,12 +422,12 @@ class LoadPilAndNumpy:
 class LoadImage_Legend(LoadPilAndNumpy):
     def __init__(self, im0, legend, imgsz=640):
         super().__init__(im0, imgsz)
-        if not isinstance(legend, list):
-            legend = [legend]
         self.legend = [self._single_check(le) for le in legend]
         
     def __next__(self):
         return super().__next__() + (self.legend,)
+    
+
 class LoadTensor:
     """
     Load images from torch.Tensor data.

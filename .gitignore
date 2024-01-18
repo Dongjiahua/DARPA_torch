@@ -10,3 +10,7 @@ test.py
 test2.py 
 inference
 *.pt
+runs/
+yolo_data/
+exp/
+inference/
