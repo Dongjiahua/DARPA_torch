@@ -232,8 +232,9 @@ class OneshotYOLO(torch.nn.Module):
         }
         output = self.model(input, verbose=False)
         predicted = []
-        patched_predicted = np.zeros(img_size)
+        
         for i in range(len(output)):
+            patched_predicted = np.zeros(img_size)
             boxes = output[i].boxes
             xywh = boxes.xywh
             cls = boxes.cls.cpu().numpy()
