@@ -14,7 +14,7 @@ import rasterio
 import time
 from ultralytics import YOLO
 
-def save_plot_as_png(prediction_result, map_name, legend, outputPath):
+def save_plot_as_png(prediction_result, map_name,  outputPath):
     """
     This function visualizes and saves the True Segmentation, Predicted Segmentation, Full Map, 
     and the Legend in a single image.
@@ -31,24 +31,22 @@ def save_plot_as_png(prediction_result, map_name, legend, outputPath):
 
     global h5_image  # Using a global variable to access the h5 image object
 
-    # Fetching the true segmentation layer
-    true_seg = h5_image.get_layer(map_name, legend)
+
     
     # Fetching the full map
     full_map = h5_image.get_map(map_name)
     
     # Fetching the legend patch from h5 image
-    legend_patch = h5_image.get_legend(map_name, legend)
+    legend_resized = full_map
     
-    # Resize the legend to the specified dimensions
-    legend_resized = cv2.resize(legend_patch, (256,256))
+
 
     # Convert the legend to uint8 range [0, 255] if its dtype is float32
     if legend_resized.dtype == np.float32:
         legend_resized = (legend_resized * 255).numpy().astype(np.uint8)
 
     # Construct the output image path
-    output_image_path = os.path.join(outputPath, f"{map_name}_{legend}_visual.png")
+    output_image_path = os.path.join(outputPath, f"{map_name}_m_visual.png")
 
     # Create a figure with 4 subplots: true segmentation, predicted segmentation, full map, and legend
     fig, axarr = plt.subplots(1, 4, figsize=(20,5))
@@ -60,13 +58,13 @@ def save_plot_as_png(prediction_result, map_name, legend, outputPath):
     ax0 = plt.subplot(gs[0])
     point_size = 10
 
-    true_seg = np.array(true_seg)
-    y_indices, x_indices = np.where(true_seg == 1)
-    ax0.imshow(true_seg, cmap='gray')  # 假设mask是灰度的，所以使用灰度色图
-    ax0.scatter(x_indices, y_indices, s=point_size, color='red', marker='o')
+    # true_seg = np.array(true_seg)
+    # y_indices, x_indices = np.where(true_seg > 1)
+    # ax0.imshow(true_seg, cmap='gray')  # 假设mask是灰度的，所以使用灰度色图
+    # ax0.scatter(x_indices, y_indices, s=point_size, color='red', marker='o')
 
-    ax0.set_title('True segmentation')
-    ax0.axis('off')
+    # ax0.set_title('True segmentation')
+    # ax0.axis('off')
 
     # Display the predicted segmentation
     ax1 = plt.subplot(gs[1])
@@ -265,8 +263,8 @@ class MulticlassYOLO(torch.nn.Module):
 
         
         
-def perform_inference(map_patch, legend_patch, model):
-    return model(map_patch, legend_patch)
+def perform_inference(map_patch, model):
+    return model(map_patch)
 
 def main(args):
     """
@@ -299,51 +297,52 @@ def main(args):
     
     # Build the Inference model
 
-    model = OneshotYOLO()
+    model = MulticlassYOLO()
     model.load(args.modelPath)
     # model.eval()    
 
-    for legend in (map_legends):
-        print(f"Processing legend: {legend}")
-        start = time.time()
-        full_prediction = np.zeros((map_width, map_height))
-        legend_patch = h5_image.get_legend(map_name, legend)
-        for row in range(num_rows):
-            for col in range(num_cols):
-                map_patch = h5_image.get_patch(row, col, map_name)
 
-                prediction = perform_inference(map_patch, legend_patch, model)
-                # print(f"Prediction for patch ({row}, {col}) completed.")
 
-                
-                # Calculate starting indices for rows and columns
-                x_start = row * h5_image.patch_size
-                y_start = col * h5_image.patch_size
+    start = time.time()
+    full_prediction = np.zeros((map_width, map_height))
 
-                # Calculate ending indices for rows and columns
-                x_end = x_start + h5_image.patch_size
-                y_end = y_start + h5_image.patch_size
+    for row in range(num_rows):
+        for col in range(num_cols):
+            map_patch = h5_image.get_patch(row, col, map_name)
 
-                # Adjust the ending indices if they go beyond the image size
-                x_end = min(x_end, map_width)
-                y_end = min(y_end, map_height)
+            prediction, _ = perform_inference(map_patch, model)
+            # print(f"Prediction for patch ({row}, {col}) completed.")
 
-                # Adjust the shape of the prediction if necessary
-                prediction_shape_adjusted = prediction[:x_end-x_start, :y_end-y_start]
+            
+            # Calculate starting indices for rows and columns
+            x_start = row * h5_image.patch_size
+            y_start = col * h5_image.patch_size
 
-                # Assign the prediction to the correct location in the full_prediction array
-                full_prediction[x_start:x_end, y_start:y_end] = prediction_shape_adjusted
-       # Mask out the map background pixels from the prediction
-        print("Applying mask to the full prediction.")
-        masked_prediction = prediction_mask(full_prediction, map_name)
+            # Calculate ending indices for rows and columns
+            x_end = x_start + h5_image.patch_size
+            y_end = y_start + h5_image.patch_size
 
-        os.makedirs(args.outputPath, exist_ok=True)
-        save_plot_as_png(masked_prediction, map_name, legend, args.outputPath)
+            # Adjust the ending indices if they go beyond the image size
+            x_end = min(x_end, map_width)
+            y_end = min(y_end, map_height)
 
-        # Save the results
-        print("Saving results.")
-        save_results(masked_prediction, map_name, legend, args.outputPath)
-        print(f"Processing legend: {legend} completed, time: {time.time()-start}")
+            # Adjust the shape of the prediction if necessary
+            # print(prediction)
+            prediction_shape_adjusted = prediction[:x_end-x_start, :y_end-y_start]
+
+            # Assign the prediction to the correct location in the full_prediction array
+            full_prediction[x_start:x_end, y_start:y_end] = prediction_shape_adjusted
+    # Mask out the map background pixels from the prediction
+    print("Applying mask to the full prediction.")
+    masked_prediction = prediction_mask(full_prediction, map_name)
+
+    os.makedirs(args.outputPath, exist_ok=True)
+    save_plot_as_png(masked_prediction, map_name, args.outputPath)
+
+    # # Save the results
+    # print("Saving results.")
+    # save_results(masked_prediction, map_name, args.outputPath)
+    # print(f"Processing legend: {legend} completed, time: {time.time()-start}")
 
 
     
@@ -372,7 +371,7 @@ if __name__ == "__main__":
     else:
         main(args)
 
-    #python inference.py --mapPath '/projects/bbym/shared/data/commonPatchData/validation/256/24_Black Crystal_2014_p43.hdf5' --outputPath './inference' --modelPath '/u/jiahuad2/codebase/yolo_inference/runs/oneshot-detect/train6/weights/best.pt'
+    #python inference_multi_class.py --mapPath '/projects/bbym/shared/data/commonPatchData/validation/256/15/NM_Capitan_189999_1934_48000_geo_mosaic.hdf5' --outputPath './inference' --modelPath ''/projects/bbym/shared/models/flat-iceberg/multi_class.pt''
 # 24_Black Crystal_2014_p43.hdf5
 
         
