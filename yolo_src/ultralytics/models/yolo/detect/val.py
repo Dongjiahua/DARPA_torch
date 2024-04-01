@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import json
 
-from ultralytics.data import build_dataloader, build_yolo_dataset, converter, build_oneshot_yolo_dataset
+from ultralytics.data import build_dataloader, build_yolo_dataset, converter, build_oneshot_yolo_dataset, build_H5_yolo_dataset
 from ultralytics.engine.validator import BaseValidator
 from ultralytics.utils import LOGGER, ops
 from ultralytics.utils.checks import check_requirements
@@ -414,4 +414,16 @@ class OneShotDetectionValidator(DetectionValidator):
             batch (int, optional): Size of batches, this is for `rect`. Defaults to None.
         """
         return build_oneshot_yolo_dataset(self.args, img_path, batch, self.data, mode=mode, stride=self.stride)
+
+class H5_DetectionValidator(OneShotDetectionValidator):
+    def build_dataset(self, img_path, mode='val', batch=None):
+        """
+        Build YOLO Dataset.
+
+        Args:
+            img_path (str): Path to the folder containing images.
+            mode (str): `train` mode or `val` mode, users are able to customize different augmentations for each mode.
+            batch (int, optional): Size of batches, this is for `rect`. Defaults to None.
+        """
+        return build_H5_yolo_dataset(self.args, img_path, batch, self.data, mode=mode, stride=self.stride) 
     

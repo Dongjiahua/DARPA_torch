@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Union
 from ultralytics.engine.model import Model
 from ultralytics.models import yolo  # noqa
-from ultralytics.nn.tasks import ClassificationModel, DetectionModel, OneshotDetectionModel, PoseModel, SegmentationModel
+from ultralytics.nn.tasks import ClassificationModel, DetectionModel, OneshotDetectionModel, PoseModel, SegmentationModel,H5_DetectionModel
 
 
 class YOLO(Model):
@@ -24,6 +24,11 @@ class YOLO(Model):
                 'trainer': yolo.detect.DetectionTrainer,
                 'validator': yolo.detect.DetectionValidator,
                 'predictor': yolo.detect.DetectionPredictor, },
+            'hd5-detect': {
+                'model': H5_DetectionModel,
+                'trainer': yolo.detect.H5_DetectionTrainer,
+                'validator': yolo.detect.H5_DetectionValidator,
+                'predictor': yolo.detect.OneShotDetectionPredictor, },
             'oneshot-detect': {
                 'model': OneshotDetectionModel,
                 'trainer': yolo.detect.OneshotDetectionTrainer,

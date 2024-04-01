@@ -4,10 +4,10 @@ from copy import copy
 
 import numpy as np
 
-from ultralytics.data import build_dataloader, build_yolo_dataset, build_oneshot_yolo_dataset
+from ultralytics.data import build_dataloader, build_yolo_dataset, build_oneshot_yolo_dataset, build_H5_yolo_dataset
 from ultralytics.engine.trainer import BaseTrainer
 from ultralytics.models import yolo
-from ultralytics.nn.tasks import DetectionModel, OneshotDetectionModel
+from ultralytics.nn.tasks import DetectionModel, H5_DetectionModel, OneshotDetectionModel
 from ultralytics.utils import LOGGER, RANK
 from ultralytics.utils.plotting import plot_images, plot_labels, plot_results
 from ultralytics.utils.torch_utils import de_parallel, torch_distributed_zero_first
@@ -36,6 +36,7 @@ class DetectionTrainer(BaseTrainer):
             mode (str): `train` mode or `val` mode, users are able to customize different augmentations for each mode.
             batch (int, optional): Size of batches, this is for `rect`. Defaults to None.
         """
+
         gs = max(int(de_parallel(self.model).stride.max() if self.model else 0), 32)
         return build_yolo_dataset(self.args, img_path, batch, self.data, mode=mode, rect=mode == 'val', stride=gs)
 
@@ -118,6 +119,7 @@ class DetectionTrainer(BaseTrainer):
 
 class OneshotDetectionTrainer(DetectionTrainer):
     def build_dataset(self, img_path, mode='train', batch=None):
+
         gs = max(int(de_parallel(self.model).stride.max() if self.model else 0), 32)
         return build_oneshot_yolo_dataset(self.args, img_path, batch, self.data, mode=mode, rect=mode == 'val', stride=gs)
     
@@ -135,6 +137,41 @@ class OneshotDetectionTrainer(DetectionTrainer):
 
     def preprocess_batch(self, batch):
         """Preprocesses a batch of images by scaling and converting to float."""
+        
         batch['img'] = batch['img'].to(self.device, non_blocking=True).float() / 255
         batch['legend_img'] = batch['legend_img'].to(self.device, non_blocking=True).float() / 255
         return batch
+    
+class H5_DetectionTrainer(OneshotDetectionTrainer):
+    def build_dataset(self, img_path, mode='train', batch=None):
+        gs = max(int(de_parallel(self.model).stride.max() if self.model else 0), 32)
+        return build_H5_yolo_dataset(self.args, img_path, batch, self.data, mode=mode, rect=mode == 'val', stride=gs)
+    
+    def get_validator(self):
+        """Returns a DetectionValidator for YOLO model validation."""
+        self.loss_names = 'box_loss', 'cls_loss', 'dfl_loss'
+        return yolo.detect.H5_DetectionValidator(self.test_loader, save_dir=self.save_dir, args=copy(self.args))
+
+    def preprocess_batch(self, batch):
+        """Preprocesses a batch of images by scaling and converting to float."""
+
+        # print(self.da)
+        batch['img'] = batch['img'].to(self.device, non_blocking=True).float() / 255
+        batch['legend_img'] = batch['legend_img'].to(self.device, non_blocking=True).float() / 255
+        return batch
+
+    def get_model(self, cfg=None, weights=None, verbose=True):
+        """Return a YOLO detection model."""
+        model = H5_DetectionModel(cfg, nc=self.data['nc'], verbose=verbose and RANK == -1)
+        if weights:
+            model.load(weights)
+        return model
+
+    def set_model_attributes(self):
+        """Nl = de_parallel(self.model).model[-1].nl  # number of detection layers (to scale hyps)."""
+        # self.args.box *= 3 / nl  # scale to layers
+        # self.args.cls *= self.data["nc"] / 80 * 3 / nl  # scale to classes and layers
+        # self.args.cls *= (self.args.imgsz / 640) ** 2 * 3 / nl  # scale to image size and layers
+        self.model.nc = self.data['nc']  # attach number of classes to model
+        self.model.names = self.data['names']  # attach class names to model
+        self.model.args = self.args  # attach hyperparameters to model

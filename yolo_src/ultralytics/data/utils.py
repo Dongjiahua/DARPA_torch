@@ -15,6 +15,7 @@ from tarfile import is_tarfile
 import cv2
 import numpy as np
 from PIL import Image, ImageOps
+from torch import layer_norm
 
 from ultralytics.nn.autobackend import check_class_names
 from ultralytics.utils import (DATASETS_DIR, LOGGER, NUM_THREADS, ROOT, SETTINGS_YAML, TQDM, clean_url, colorstr,
@@ -22,11 +23,22 @@ from ultralytics.utils import (DATASETS_DIR, LOGGER, NUM_THREADS, ROOT, SETTINGS
 from ultralytics.utils.checks import check_file, check_font, is_ascii
 from ultralytics.utils.downloads import download, safe_download, unzip_file
 from ultralytics.utils.ops import segments2boxes
+import glob 
+from h5image import H5Image
 
 HELP_URL = 'See https://docs.ultralytics.com/datasets/detect for dataset formatting guidance.'
 IMG_FORMATS = 'bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm'  # image suffixes
 VID_FORMATS = 'asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ts', 'wmv', 'webm'  # video suffixes
 PIN_MEMORY = str(os.getenv('PIN_MEMORY', True)).lower() == 'true'  # global pin_memory for dataloaders
+
+def h5setup(path):
+    mapsh5i = {}
+    # exclude_map = set(['CO_SanchezRes','CA_NV_LasVegas','CO_VailE100K','CA_Cambria','ID_LakeWalcott','AZ_PioRico_Nogales'])
+    for file in glob.glob(os.path.join(path, "*")):
+        mapname = os.path.basename(file).replace(".hdf5", "")
+        mapsh5i[mapname] = H5Image(file, "r")
+    print("Setup complete. Number of maps loaded:", len(mapsh5i))
+    return mapsh5i
 
 
 def img2label_paths(img_paths):
@@ -118,6 +130,7 @@ def verify_image_label(args):
                 lb = np.array(lb, dtype=np.float32)
             nl = len(lb)
             if nl:
+
                 if keypoint:
                     assert lb.shape[1] == (5 + nkpt * ndim), f'labels require {(5 + nkpt * ndim)} columns each'
                     points = lb[:, 5:].reshape(-1, ndim)[:, :2]
@@ -156,6 +169,118 @@ def verify_image_label(args):
         msg = f'{prefix}WARNING ⚠️ {im_file}: ignoring corrupt image/label: {e}'
         return [None, None, None, None, None, nm, nf, ne, nc, msg]
 
+def verify_h5image_label(args):
+    """Verify one image-label pair."""
+    h5key, h5files, keypoint, num_cls, nkpt, ndim = args
+    nm, nf, ne, nc, msg, segments, keypoints = 0, 0, 0, 0, '', [], None
+    # Number (missing, found, empty, corrupt), message, segments, keypoints
+    map_name, layer_name, row, column = h5key
+    label_patch = h5files[map_name].get_patch(row, column, map_name, layer_name)
+    point_coords = np.where(label_patch==1)
+    point_coords = np.stack(point_coords, axis=1)
+    point_coords = point_coords[:,::-1]
+    lines = []
+    for point in point_coords:
+        cx, cy = point
+        size = 256
+        w, h = 32, 32
+        cx = cx/size
+        cy = cy/size
+        w = w/size
+        h = h/size
+        line  =[0,cx,cy,w,h]
+        line = [str(x) for x in line]
+        lines.append(line)
+        
+    lb = np.array(lines, dtype=np.float32)
+    nl = len(lb)
+    if nl:
+        if keypoint:
+            assert lb.shape[1] == (5 + nkpt * ndim), f'labels require {(5 + nkpt * ndim)} columns each'
+            points = lb[:, 5:].reshape(-1, ndim)[:, :2]
+        else:
+            assert lb.shape[1] == 5, f'labels require 5 columns, {lb.shape[1]} columns detected'
+            points = lb[:, 1:]
+        assert points.max() <= 1, f'non-normalized or out of bounds coordinates {points[points > 1]}'
+        assert lb.min() >= 0, f'negative label values {lb[lb < 0]}'
+
+        # All labels
+        max_cls = lb[:, 0].max()  # max label count
+        assert max_cls <= num_cls, \
+            f'Label class {int(max_cls)} exceeds dataset class count {num_cls}. ' \
+            f'Possible class labels are 0-{num_cls - 1}'
+        _, i = np.unique(lb, axis=0, return_index=True)
+
+    else:
+        ne = 1  # label empty
+        lb = np.zeros((0, (5 + nkpt * ndim) if keypoint else 5), dtype=np.float32)
+    
+    if keypoint:
+        keypoints = lb[:, 5:].reshape(-1, nkpt, ndim)
+        if ndim == 2:
+            kpt_mask = np.where((keypoints[..., 0] < 0) | (keypoints[..., 1] < 0), 0.0, 1.0).astype(np.float32)
+            keypoints = np.concatenate([keypoints, kpt_mask[..., None]], axis=-1)  # (nl, nkpt, 3)
+    lb = lb[:, :5]
+    return lb, keypoints, label_patch.shape, layer_name
+
+def verify_h5image_label_multiclass(args):
+    """Verify one image-label pair."""
+    h5key, h5files, label_names, keypoint, num_cls, nkpt, ndim = args
+    nm, nf, ne, nc, msg, segments, keypoints = 0, 0, 0, 0, '', [], None
+    # Number (missing, found, empty, corrupt), message, segments, keypoints
+    map_name, row, column = h5key
+    lines = []
+    for layer in h5files[map_name].get_layers(map_name):
+         if layer.endswith('pt'):
+            layer_name = layer
+            class_id = int(label_names[layer_name])
+            label_patch = h5files[map_name].get_patch(row, column, map_name, layer_name)
+            point_coords = np.where(label_patch==1)
+            point_coords = np.stack(point_coords, axis=1)
+            point_coords = point_coords[:,::-1]
+            
+            for point in point_coords:
+                cx, cy = point
+                size = 256
+                w, h = 32, 32
+                cx = cx/size
+                cy = cy/size
+                w = w/size
+                h = h/size
+                line  =[class_id,cx,cy,w,h]
+                line = [str(x) for x in line]
+                lines.append(line)
+                
+    lb = np.array(lines, dtype=np.float32)
+    nl = len(lb)
+    if nl:
+        if keypoint:
+            assert lb.shape[1] == (5 + nkpt * ndim), f'labels require {(5 + nkpt * ndim)} columns each'
+            points = lb[:, 5:].reshape(-1, ndim)[:, :2]
+        else:
+            assert lb.shape[1] == 5, f'labels require 5 columns, {lb.shape[1]} columns detected'
+            points = lb[:, 1:]
+        assert points.max() <= 1, f'non-normalized or out of bounds coordinates {points[points > 1]}'
+        assert lb.min() >= 0, f'negative label values {lb[lb < 0]}'
+
+        # All labels
+        max_cls = lb[:, 0].max()  # max label count
+        assert max_cls <= num_cls, \
+            f'Label class {int(max_cls)} exceeds dataset class count {num_cls}. ' \
+            f'Possible class labels are 0-{num_cls - 1}'
+        _, i = np.unique(lb, axis=0, return_index=True)
+
+    else:
+        ne = 1  # label empty
+        lb = np.zeros((0, (5 + nkpt * ndim) if keypoint else 5), dtype=np.float32)
+    
+    if keypoint:
+        keypoints = lb[:, 5:].reshape(-1, nkpt, ndim)
+        if ndim == 2:
+            kpt_mask = np.where((keypoints[..., 0] < 0) | (keypoints[..., 1] < 0), 0.0, 1.0).astype(np.float32)
+            keypoints = np.concatenate([keypoints, kpt_mask[..., None]], axis=-1)  # (nl, nkpt, 3)
+    lb = lb[:, :5]
+    return lb, keypoints, label_patch.shape, layer_name
 
 def polygon2mask(imgsz, polygons, color=1, downsample_ratio=1):
     """
@@ -453,6 +578,7 @@ class HUBDatasetStats:
 
         self.hub_dir = Path(f'{data["path"]}-hub')
         self.im_dir = self.hub_dir / 'images'
+
         self.im_dir.mkdir(parents=True, exist_ok=True)  # makes /images
         self.stats = {'nc': len(data['names']), 'names': list(data['names'].values())}  # statistics dictionary
         self.data = data

@@ -21,7 +21,7 @@ import csv
 import sys
 import contextlib
 import io
-
+from inference import OneshotYOLO
 def blockPrint():
     sys.stdout = open(os.devnull, 'w')
 
@@ -73,7 +73,9 @@ def train():
     f1s = []
     # model = YOLO("yolov8n.yaml")  # build a new model from scratch
     # model = YOLO("yolov8n.pt")  # load a pretrained model (recommended for training)
-    model = YOLO(model_path)
+    model = OneshotYOLO()
+    model.load(model_path)
+
     for tifPath in tifPaths:    
         # if "AR_Maumee" not in tifPath and "CO_Silverton" not in tifPath: continue
         tifFile = tifPath.split('/')[-1]
@@ -231,6 +233,142 @@ def map_mask(working_dir, filename, pad_unpatch_predicted_threshold):
     
     return masked_img
 
+def unpatch_img(patches, shape, overlap=0, mode='discard'):
+        # Check unpatch_method
+        choices = ['and','or','discard']
+        if not mode in choices:
+            msg = f'unpatchify mode "{mode}" is not a valid option. Valid options are : {choices}'
+            raise ValueError(msg)
+        
+        _, cols, rows, channels, patch_size, patch_size = patches.shape
+        h_over = int(overlap/2)
+
+        if mode == 'and':
+            image = np.full(shape, 255, dtype=np.float32)
+            #image = np.full((shape[0], shape[1]+overlap, shape[2]+overlap), 255, dtype=np.uint8)
+            for col in range(0,cols):
+                for row in range(0,rows):
+                    y_min = col*(patch_size-overlap) 
+                    y_max = (col+1)*patch_size - (col*overlap)
+                    x_min = row*(patch_size-overlap)
+                    x_max = (row+1)*patch_size - (row*overlap)
+                    #log.debug(f':, {y_min}:{y_max}, {x_min}:{x_max}')
+                    image[:, y_min:y_max, x_min:x_max] &= patches[0, col, row, :, :, :]
+            #image = image[:,h_over:shape[1]+h_over, h_over:shape[2]+h_over]
+        if mode == 'or':
+            image = np.zeros(shape, dtype=np.uint8)
+            #image = np.zeros((shape[0], shape[1]+overlap, shape[2]+overlap), dtype=np.uint8)
+            for col in range(0,cols):
+                for row in range(0,rows):
+                    y_min = col*(patch_size-overlap) 
+                    y_max = (col+1)*patch_size - (col*overlap)
+                    x_min = row*(patch_size-overlap)
+                    x_max = (row+1)*patch_size - (row*overlap)
+                    #log.debug(f':, {y_min}:{y_max}, {x_min}:{x_max}')
+                    image[:, y_min:y_max, x_min:x_max] |= patches[0, col, row, :, :, :]
+            #image = image[:,h_over:shape[1]+h_over, h_over:shape[2]+h_over]
+        if mode == 'discard':
+            image = np.zeros(shape, dtype=np.uint8)
+            
+            for col in range(0,cols):
+                for row in range(0,rows):
+                    y_min = h_over + col*(patch_size-overlap)
+                    y_max = h_over + (col+1)*(patch_size-overlap)
+                    x_min = h_over + row*(patch_size-overlap)
+                    x_max = h_over + (row+1)*(patch_size-overlap)
+                    #log.debug(f'{col},{row} = :, {y_min}:{y_max}, {x_min}:{x_max}')
+                    py_min = h_over
+                    py_max = patch_size-h_over
+                    px_min = h_over
+                    px_max = patch_size-h_over
+                    
+                    if row == 0: 
+                        x_min -= h_over
+                        px_min = 0
+                    if row == rows-1:
+                        x_max += h_over
+                        px_max = patch_size
+                    if col == 0:
+                        y_min -= h_over
+                        py_min = 0
+                    if col == cols-1:
+                        y_max += h_over
+                        py_max = patch_size
+                    image[:, y_min:y_max, x_min:x_max] = patches[0, col, row, :, py_min:py_max, px_min:px_max]
+        return image
+
+
+def inference(model, image, legend_img, batch_size=16, patch_size=256, patch_overlap=32):
+
+    # Make sure model is set to inference mode
+    #self.model.cuda()
+    model.eval() 
+
+    # Get the size of the map
+    map_width, map_height, map_channels = image.shape
+
+    # Reshape maps with 1 channel images (greyscale) to 3 channels for inference
+    if map_channels == 1: # This is tmp fix!
+        image = np.concatenate([image,image,image], axis=2)        
+
+    # Generate patches
+    # Pad image so we get a size that can be evenly divided into patches.
+    right_pad = patch_size - (map_width % patch_size)
+    bottom_pad = patch_size - (map_height % patch_size)
+    image = np.pad(image, ((0, right_pad), (0, bottom_pad), (0,0)), mode='constant', constant_values=0)
+    patches = patchify(image, (patch_size, patch_size, 3), step=patch_size-patch_overlap)
+
+    rows = patches.shape[0]
+    cols = patches.shape[1]
+
+    # Flatten row col dims
+    patches = patches.reshape(-1, patch_size, patch_size, 3) 
+    print(f"number of patches: {len(patches)}")
+    # Resize the legend patch
+    norm_legend_img = cv2.resize(legend_img, (patch_size, patch_size))
+
+    # Reshape maps with 1 channel legends (greyscale) to 3 channels for inference
+    if map_channels == 1: # This is tmp fix!
+        norm_legend_img = np.stack([norm_legend_img,norm_legend_img,norm_legend_img], axis=2)
+
+    # Create legend array to merge with patches
+    norm_legend_patches = np.array([norm_legend_img for i in range(rows*cols)])
+
+    # Perform Inference in batches
+    prediction_patches = []
+    prediction_confs = []
+    with torch.no_grad():
+        for i in range(0, len(norm_legend_patches), batch_size):
+            prediction, confs = model(patches[i:i+batch_size], norm_legend_patches[i:i+batch_size])
+            
+            prediction_patches += prediction
+            prediction_confs += confs
+
+    # Merge patches back into single image and remove padding
+    prediction_patches = np.stack(prediction_patches, axis=0)
+    prediction_confs = np.stack(prediction_confs, axis=0)
+    # prediction_patches = np.array(prediction_patches) # I have no idea why but sometimes model predict outputs a np array and sometimes a tensor array???
+    prediction_patches = prediction_patches.reshape([rows, cols, 1, patch_size, patch_size, 1])
+    unpatch_image = unpatch_img(prediction_patches.transpose(2,0,1,5,3,4), [1, image.shape[0], image.shape[1]], overlap=patch_overlap)
+    #prediction_image = unpatchify(prediction_patches, [image.shape[0], image.shape[1], 1])
+    prediction_image = unpatch_image[:,:map_width,:map_height]
+    
+    prediction_confs = prediction_confs.reshape([rows, cols, 1, patch_size, patch_size, 1])
+    unpatch_confs = unpatch_img(prediction_confs.transpose(2,0,1,5,3,4), [1, image.shape[0], image.shape[1]], overlap=patch_overlap)
+    confs_image = unpatch_confs[:,:map_width,:map_height]
+    
+    
+    #saveGeoTiff("testdata/debug/sample.tif", prediction_image.astype(np.uint8) * 255, None, None)
+
+    # Convert prediction result to a binary format using a threshold
+    #prediction_mask = (prediction_image > 0.5).astype(np.uint8)
+    #predictions[label] = prediction_mask
+    prediction = prediction_image.transpose(1,2,0).squeeze()
+    prediction = (prediction > 0.5).astype(np.uint8)
+    confs = confs_image.transpose(1,2,0).squeeze()
+    return prediction, confs
+
+
 def run(working_dir, model, tifFile, legend, args):
     True_Folder = "/u/jiahuad2/data/validation_rasters"
     write_filename = tifFile.split('.')[0]+'_'+legend+'.tif'
@@ -243,43 +381,15 @@ def run(working_dir, model, tifFile, legend, args):
     # if os.path.isfile(write_filePath):
     #     print(f"Already Finished {write_filename}!", legend)
     #     return
-    try:
-        legend_coor, shift_coord, map_im_cut_dims, map_patchs_dims = build_patch(working_dir, tifFile, legend, patch_dims = (256,256))
-    except:
-        print(f"Failed {write_filename}!", legend)
-        return
-    gc.collect()
-    patchNames = sorted(glob(os.path.join(working_dir, tifFile.split('.')[0]+'_map_patches/*')))
-
-
-    legend_path  =os.path.join(working_dir, tifFile.split('.')[0]+'_legend', legend+'.png')
-    t = legend+".png"
-    patched_predicted = np.zeros((map_patchs_dims[0], map_patchs_dims[1], 1, 256, 256, 1))
-    index = 0
-    with torch.no_grad():
-        for i, data in enumerate(patchNames):
-            im = PIL.Image.open(data)
-            legend = PIL.Image.open(legend_path)
-            input = {
-                "img": im,
-                "legend": legend
-            }
-            output = model(input, verbose=False)[0].boxes
-            xywh = output.xywh
-            cls = output.cls.cpu().numpy()
-            kpts = xywh.cpu().numpy()[:,:2]
-            kpts = np.round(kpts).astype(int)
-            dim_i = index//map_patchs_dims[1]
-            dim_j = index%map_patchs_dims[1]
-            for i, kpt in enumerate(kpts):
-                if int(cls[i]) == 0:
-                    patched_predicted[dim_i, dim_j, 0, int(kpt[1]), int(kpt[0]), 0] = 1
-            index+=1
-                    
-
-    patched_predicted = unpatchify(patched_predicted, (map_im_cut_dims[0], map_im_cut_dims[1], 1))
-    patched_predicted = np.pad(patched_predicted, [(shift_coord[0], shift_coord[1]), (shift_coord[2], shift_coord[3]), (0,0)], mode='constant')
-    gc.collect()
+    map_img = cv2.imread(os.path.join(working_dir, tifFile))
+    map_img = cv2.cvtColor(map_img, cv2.COLOR_BGR2RGB)
+    legend_path = os.path.join(working_dir, tifFile.split('.')[0]+'_legend', legend+'.png')
+    legend_img = cv2.imread(legend_path)
+    legend_img = cv2.cvtColor(legend_img, cv2.COLOR_BGR2RGB)
+    start = time.time()
+    patched_predicted = inference(model, map_img, legend_img, batch_size=256, patch_size=256, patch_overlap=32)
+    print(f"Finished Inference in {time.time()-start:.3f} seconds, map_size: {map_img.shape}")
+    print("Finished Inference")
     patched_predicted = patched_predicted.astype(int)
     masked_img = map_mask(working_dir, tifFile, patched_predicted)
 
@@ -287,7 +397,6 @@ def run(working_dir, model, tifFile, legend, args):
     # expand one more dimension and repeat the pixel value in the third axis
     final_seg = np.repeat(masked_img[:, :, np.newaxis], 3, axis=2).astype(np.uint8)
     cv2.imwrite(write_filePath, final_seg)  
-    filePath = os.path.join(working_dir, tifFile) 
     # write_geoTIFF(filePath,write_geo_filePath,final_seg[:,:,0]) 
     
     precision, recall, f_score = single_eval(write_filename)

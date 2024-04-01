@@ -83,7 +83,7 @@ class pipeline_pytorch_model(pipeline_model):
                         prediction_patches+=(prediction)
 
             # Merge patches back into single image and remove padding
-            prediction_patches = np.array(prediction_patches) # I have no idea why but sometimes model predict outputs a np array and sometimes a tensor array???
+            prediction_patches = np.stack(prediction_patches, axis=0) # I have no idea why but sometimes model predict outputs a np array and sometimes a tensor array???
             prediction_patches = prediction_patches.reshape([rows, cols, 1, patch_size, patch_size, 1])
             prediction_image = unpatchify(prediction_patches, [image.shape[0], image.shape[1], 1])
             prediction_image = prediction_image[:map_width,:map_height,:]

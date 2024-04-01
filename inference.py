@@ -232,9 +232,20 @@ class OneshotYOLO(torch.nn.Module):
         }
         output = self.model(input, verbose=False)
         predicted = []
-        patched_predicted = np.zeros(img_size)
+        confs = []
+        
         for i in range(len(output)):
+            patched_predicted = np.zeros(img_size)
+            conf_predicted = np.zeros(img_size)
             boxes = output[i].boxes
+
+            conf = boxes.conf.cpu().numpy()
+            # if len(conf)>0:
+            #     print("$$$$$$$$$$$$$$$$$$$$$$$")
+            #     print(boxes)
+            #     print(conf)
+            #     assert False
+            # assert False
             xywh = boxes.xywh
             cls = boxes.cls.cpu().numpy()
             kpts = xywh.cpu().numpy()[:,:2]
@@ -242,16 +253,18 @@ class OneshotYOLO(torch.nn.Module):
             for i, kpt in enumerate(kpts):
                 if int(cls[i]) == 0 and kpt[0] >= 0 and kpt[0] < img_size[1] and kpt[1] >= 0 and kpt[1] < img_size[0]:
                     patched_predicted[int(kpt[1]), int(kpt[0])] = 1
+                    conf_predicted[int(kpt[1]), int(kpt[0])] = conf[i]
             predicted.append(patched_predicted)
+            confs.append(conf_predicted)
         if type(map_patch)==list:
-            return predicted
+            return predicted, confs
         else:
-            return predicted[0]
+            return predicted[0], confs[0]
 
         
         
 def perform_inference(map_patch, legend_patch, model):
-    return model(map_patch, legend_patch)[0]
+    return model(map_patch, legend_patch)
 
 def main(args):
     """
@@ -357,8 +370,8 @@ if __name__ == "__main__":
     else:
         main(args)
 
-    #python inference.py --mapPath '/projects/bbym/shared/data/commonPatchData/old/256/NV_SilverPeak_321289_1963_62500_geo_mosaic.hdf5' --outputPath './inference' --modelPath './best.pt'
-
+    #python inference.py --mapPath '/projects/bbym/shared/data/commonPatchData/validation/256/24_Black Crystal_2014_p43.hdf5' --outputPath './inference' --modelPath '/u/jiahuad2/codebase/yolo_inference/runs/oneshot-detect/train6/weights/best.pt'
+# 24_Black Crystal_2014_p43.hdf5
 
         
         

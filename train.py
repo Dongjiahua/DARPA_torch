@@ -3,7 +3,7 @@ import torchvision
 from PIL import Image
 # torchvision.ops.nms(1,1,1)
 # Load a model
-model = YOLO("oneshot-yolov8n.yaml", task = "oneshot-detect")  # build a new model from scratch
+model = YOLO("oneshot-yolov8n.yaml", task = "hd5-detect")  # build a new model from scratch
 model.load('yolov8n.pt')
 # model = YOLO("yolov8n.yaml")  # build a new model from scratch
 # model = YOLO("yolov8n.pt")  # load a pretrained model (recommended for training)
@@ -11,7 +11,8 @@ model.load('yolov8n.pt')
 
 # Use the model
 
-model.train(data="config/pt.yaml", epochs=200)  # train the model
+# model.train(data="config/h5_15.yaml", epochs=50, device = [0])  # train the model
+model.train(data="config/h5_15_multiclass.yaml", epochs=50, device = [0, 1])  # train the model
 # model.val(data="pt.yaml")
 
 # metrics = model.val()  # evaluate model performance on the validation set

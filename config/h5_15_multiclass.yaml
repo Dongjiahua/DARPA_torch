@@ -1,0 +1,54 @@
+img_type: h5
+names:
+  0: 1_pt
+  1: 2_pt
+  2: 3_pt
+  3: 4_pt
+  4: 5_pt
+  5: horiz_bedding_pt
+  6: inclined_bedding_pt
+  7: volc_center_pt
+  8: circle_pt
+  9: direction_divide_pt
+  10: direction_bedrock_pt
+  11: dry_hole_pt
+  12: direction_diversion_pt
+  13: igneous_foliation_pt
+  14: incl_foliation_pt
+  15: joint_pt
+  16: overturned_bedding_pt
+  17: Pingo_pt
+  18: triangle_pt
+  19: slope_direction_pt
+  20: U_shapde_divide_pt
+  21: USGS_or_Chevron_foss_pt
+  22: vert_meta_foliation_pt
+  23: vertical_bedding_pt
+  24: vertical_joint_pt
+  25: water_well_pt
+  26: aplite_inclined_pt
+  27: aplite_vertical_pt
+  28: approx_bedding_pt
+  29: overturn_topknow_bedding_pt
+  30: inclined_topknow_bedding_pt
+  31: vertical_topknow_bedding_pt
+  32: cleavage_inclined_pt
+  33: cleavage_vertical_pt
+  34: conodont_pt
+  35: dome_pt
+  36: estimated_pt
+  37: exp_well_pt
+  38: explor_trench_pt
+  39: foliation_horizontal_pt
+  40: Phyllonitic_Foliatio_pt
+  41: rootless_vent_pt
+  42: sample_site_pt
+  43: Spring_pt
+  44: trace_fossils_flathe_pt
+  45: vert_flow_layering_pt
+  46: volcanic_vent_pt
+  47: empty_circle_pt
+path: /u/jiahuad2/codebase/yolo_inference/yolo_data/h5_15
+test: null
+train: train
+val: val

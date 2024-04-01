@@ -109,6 +109,7 @@ class BaseTrainer:
 
         # Model and Dataset
         self.model = check_model_file_from_stem(self.args.model)  # add suffix, i.e. yolov8n -> yolov8n.pt
+
         try:
             if self.args.task == 'classify':
                 self.data = check_cls_dataset(self.args.data)
@@ -120,6 +121,7 @@ class BaseTrainer:
             raise RuntimeError(emojis(f"Dataset '{clean_url(self.args.data)}' error ❌ {e}")) from e
 
         self.trainset, self.testset = self.get_dataset(self.data)
+
         self.ema = None
         self.resume = False
 
@@ -315,8 +317,10 @@ class BaseTrainer:
             if RANK in (-1, 0):
                 LOGGER.info(self.progress_string())
                 pbar = TQDM(enumerate(self.train_loader), total=nb)
+            # print(type(self.train_loader))
             self.tloss = None
             self.optimizer.zero_grad()
+
             for i, batch in pbar:
                 self.run_callbacks('on_train_batch_start')
                 # Warmup

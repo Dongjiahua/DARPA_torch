@@ -62,13 +62,14 @@ def single_eval(pt_file_name):
         predicted_path = os.path.join(Pred_Folder, pt_file_name)
         mapName = '_'.join(pt_file_name.split('_')[0:-2])+'.tif'
         mapPath = os.path.join('/u/jiahuad2/data/validation_shirui', mapName)
-        
+        # print(f"True seg path: {trueSegPath}")
+
         truSeg_im = cv2.imread(trueSegPath)[...,0]
         
         predicted_seg_im = cv2.imread(predicted_path)[...,0]
 
         map_im = cv2.imread(mapPath)
-        precision, recall, f_score = feature_f_score(map_im, predicted_seg_im, truSeg_im,feature_type="pt")
+        precision, recall, f_score = feature_f_score(map_im, predicted_seg_im, truSeg_im,feature_type="pt", min_valid_range=.25)
         enablePrint()
         return precision, recall, f_score
     else:

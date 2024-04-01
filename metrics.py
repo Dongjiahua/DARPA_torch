@@ -26,7 +26,7 @@ def overlap_distance_calculate(mat_true, mat_pred, min_valid_range=.1, parallel_
 
     # first calculate the overlapping pixels
     mat_overlap=mat_pred*mat_true
-    for x_true, y_true in tqdm(np.argwhere(mat_overlap==1)):
+    for x_true, y_true in np.argwhere(mat_overlap==1):
         lowest_dist_pairs.append((((x_true, y_true), (x_true, y_true)), 0.0))
         points_done_true.add((x_true, y_true))
         points_done_pred.add((y_true, x_true))
@@ -53,15 +53,15 @@ def overlap_distance_calculate(mat_true, mat_pred, min_valid_range=.1, parallel_
             result.append((((x_true, y_true), (x_pred, y_pred)), dist_square))
         return result
 
-    candidates=[(x_true, y_true) for x_true, y_true in tqdm(np.argwhere(mat_true==1)) if (x_true, y_true) not in points_done_true]
-    distances=Parallel(n_jobs=parallel_workers)(delayed(nearest_pixels)(x_true, y_true) for x_true, y_true in tqdm(candidates))
+    candidates=[(x_true, y_true) for x_true, y_true in np.argwhere(mat_true==1) if (x_true, y_true) not in points_done_true]
+    distances=Parallel(n_jobs=parallel_workers)(delayed(nearest_pixels)(x_true, y_true) for x_true, y_true in candidates)
     distances = [item for sublist in distances for item in sublist]
 
     # sort based on distances
     distances=sorted(distances, key=lambda x: x[1])
 
     # find the lowest distance pairs
-    for ((x_true, y_true), (x_pred, y_pred)), distance in tqdm(distances):
+    for ((x_true, y_true), (x_pred, y_pred)), distance in distances:
         if ((x_true, y_true) in points_done_true) or ((x_pred, y_pred) in points_done_pred):
             # do not consider a taken point again
             continue
@@ -144,7 +144,7 @@ def match_by_color(img, legend_coor, color_range=4, plot=False):
     return pred_by_color
 
 def feature_f_score(map_image, predicted_raster, true_raster, feature_type ='poly', legend_coor = None, min_valid_range=.1,
-                      difficult_weight=.7, set_false_as='hard', plot=False, color_range=4, parallel_workers=1):
+                      difficult_weight=.7, set_false_as='hard', plot=False, color_range=4, parallel_workers=16):
 
     """
     map_image_path: path to the the actual map image
