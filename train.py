@@ -12,7 +12,7 @@ model.load('yolov8n.pt')
 # Use the model
 
 # model.train(data="config/h5_15.yaml", epochs=50, device = [0])  # train the model
-model.train(data="config/h5_15_multiclass.yaml", epochs=50, device = [0, 1])  # train the model
+model.train(data="config/h5_15_multiclass.yaml", epochs=200, device = [0, 1])  # train the model
 # model.val(data="pt.yaml")
 
 # metrics = model.val()  # evaluate model performance on the validation set

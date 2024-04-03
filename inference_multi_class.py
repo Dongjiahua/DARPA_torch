@@ -208,6 +208,8 @@ class MulticlassYOLO(torch.nn.Module):
         
     
     def forward(self, map_patch):
+        # NOTICE
+        # Different from oneshot model, the background mask is -1, and 0~N-1 is the class label
         if self.model is None: 
             raise NotImplementedError("The model hasn't been build yet")
         if type(map_patch)==np.ndarray and len(map_patch.shape)==4:
@@ -236,16 +238,12 @@ class MulticlassYOLO(torch.nn.Module):
         
         for i in range(len(output)):
             patched_predicted = np.zeros(img_size)
+            patched_predicted[:] = -1
             conf_predicted = np.zeros(img_size)
             boxes = output[i].boxes
 
             conf = boxes.conf.cpu().numpy()
-            # if len(conf)>0:
-            #     print("$$$$$$$$$$$$$$$$$$$$$$$")
-            #     print(boxes)
-            #     print(conf)
-            #     assert False
-            # assert False
+
             xywh = boxes.xywh
             cls = boxes.cls.cpu().numpy()
             kpts = xywh.cpu().numpy()[:,:2]

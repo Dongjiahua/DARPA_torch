@@ -8,8 +8,11 @@ import torch
 from torchvision import transforms
 
 from time import time
+from src.patching import unpatch_img
 from patchify import patchify, unpatchify
 from submodules.models.flat_iceberg.inference_model import OneshotYOLO
+import json
+
 log = logging.getLogger('DARPA_CMAAS_PIPELINE')
 
 
@@ -195,7 +198,7 @@ class flat_iceberg_model_multiclass(pipeline_pytorch_model):
         super().__init__()
         self.name = 'flat iceberg'
         self.checkpoint = '/projects/bbym/shared/models/flat-iceberg/multi_class.pt'
-    
+        self.label_name_path = '/projects/bbym/shared/models/flat-iceberg/multi_class.pt'
         # Modifiable parameters
         self.device = torch.device("cuda")
         self.batch_size = 256
@@ -209,8 +212,11 @@ class flat_iceberg_model_multiclass(pipeline_pytorch_model):
         self.model.load(self.checkpoint)
         self.model.eval()
 
+        label_names = json.load(open(self.label_names_path))
+        self.name_to_class = {name: int(label_names[i]["id"]) for i in range(len(label_names)) for name in label_names[i]["names"]}
+
     # @override
-    def inference(self, image):
+    def inference(self, image, legend_names=None):
         """Image data is in CHW format. legend_images is a dictionary of label to map_unit label images in CHW format."""
 
         # Get the size of the map
@@ -234,12 +240,7 @@ class flat_iceberg_model_multiclass(pipeline_pytorch_model):
         map_patches = map_patches.reshape(-1, 3, self.patch_size, self.patch_size)
         
         log.debug(f"\tMap size: {map_width}, {map_height} patched into : {rows} x {cols} = {rows*cols} patches")
-        map_prediction = np.zeros((1, map_height, map_width), dtype=np.float32)
-        map_confidence = np.zeros((1, map_height, map_width), dtype=np.float32)
 
-
-        log.debug(f'\t\tInferencing legend: {label}')
-        lgd_stime = time()
 
 
         # Perform Inference in batches
@@ -257,15 +258,22 @@ class flat_iceberg_model_multiclass(pipeline_pytorch_model):
         #prediction_image = unpatchify(prediction_patches, [image.shape[0], image.shape[1], 1])
         prediction_image = unpatch_image[:,:map_width,:map_height]
         #saveGeoTiff("testdata/debug/sample.tif", prediction_image.astype(np.uint8) * 255, None, None)
-
-
+        
+        if legend_names is not None:
+            log.debug(f"Refactoring prediction to known legend names!")
+            idx = 1
+            final_prediction = np.zeros_like(prediction_image)
+            for name in legend_names:
+                if name not in self.name_to_class:
+                    log.warning(f"Unknown legend name: {name}, return the unrefactored prediction")
+                    return prediction_image
+                final_prediction[prediction_image == self.name_to_class[name]] = idx
+                idx += 1
+        else:
+            final_prediction = prediction_image
             
         gc.collect() # This is needed otherwise gpu memory is not freed up on each loop
 
 
-        lgd_time = time() - lgd_stime
-        # log.debug("\t\tExecution time for {} legend: {:.2f} seconds. {:.2f} patches per second".format(label, lgd_time, (rows*cols)/lgd_time))
-
-
         
-        return map_prediction
+        return prediction_image
