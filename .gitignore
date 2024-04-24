@@ -6,7 +6,7 @@ lightning_logs
 output*
 heat_out
 *.csv
-*.png
+# *.png
 test.py
 test2.py 
 inference
