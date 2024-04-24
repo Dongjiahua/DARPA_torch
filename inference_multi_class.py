@@ -5,13 +5,13 @@ import os
 import numpy as np
 import cv2 
 import math 
-from data.h5Image import H5Image
 from PIL import Image
 from torchvision import transforms
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import rasterio
 import time
+from h5image import H5Image
 from ultralytics import YOLO
 
 def save_plot_as_png(prediction_result, map_name,  outputPath):

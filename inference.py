@@ -5,13 +5,13 @@ import os
 import numpy as np
 import cv2 
 import math 
-from data.h5Image import H5Image
 from PIL import Image
 from torchvision import transforms
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import rasterio
 import time
+from h5image import H5Image
 from ultralytics import YOLO
 
 def save_plot_as_png(prediction_result, map_name, legend, outputPath):
@@ -310,7 +310,7 @@ def main(args):
             for col in range(num_cols):
                 map_patch = h5_image.get_patch(row, col, map_name)
 
-                prediction = perform_inference(map_patch, legend_patch, model)
+                prediction, _ = perform_inference(map_patch, legend_patch, model)
                 # print(f"Prediction for patch ({row}, {col}) completed.")
 
                 
@@ -370,7 +370,7 @@ if __name__ == "__main__":
     else:
         main(args)
 
-    #python inference.py --mapPath '/projects/bbym/shared/data/commonPatchData/validation/256/24_Black Crystal_2014_p43.hdf5' --outputPath './inference' --modelPath '/u/jiahuad2/codebase/yolo_inference/runs/oneshot-detect/train6/weights/best.pt'
+    #python inference.py --mapPath '/projects/bbym/shared/data/commonPatchData/validation/256/15/NV_Riepetown_319896_1958_24000_geo_mosaic.hdf5' --outputPath './inference' --modelPath '/u/jiahuad2/codebase/yolo_inference/runs/oneshot-detect/train6/weights/best.pt'
 # 24_Black Crystal_2014_p43.hdf5
 
         

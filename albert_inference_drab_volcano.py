@@ -115,6 +115,7 @@ class pipeline_pytorch_model(pipeline_model):
         right_pad = patch_size - (map_width % patch_size)
         bottom_pad = patch_size - (map_height % patch_size)
         image = np.pad(image, ((0, right_pad), (0, bottom_pad), (0,0)), mode='constant', constant_values=0)
+
         patches = patchify(image, (patch_size, patch_size, 3), step=patch_size-patch_overlap)
         patches = patches.reshape(-1, patch_size, patch_size, 3) 
         
@@ -192,7 +193,7 @@ class drab_volcano_model(pipeline_pytorch_model):
         """Image data is in CHW format. legend_images is a dictionary of label to map_unit label images in CHW format."""
 
         # Get the size of the map
-        map_width, map_height, map_channels = image.shape
+        map_height, map_width, map_channels = image.shape
 
         # Reshape maps with 1 channel images (greyscale) to 3 channels for inference
         if map_channels == 1: # This is tmp fix!
@@ -208,6 +209,7 @@ class drab_volcano_model(pipeline_pytorch_model):
         cols = map_patches.shape[1]
         rows = map_patches.shape[2]
 
+        print(map_patches.shape)
         # Flatten row col dims
         map_patches = map_patches.reshape(-1, 3, self.patch_size, self.patch_size)
         
@@ -253,7 +255,7 @@ class drab_volcano_model(pipeline_pytorch_model):
         """Image data is in CHW format. legend_images is a dictionary of label to map_unit label images in CHW format."""         
 
         # Get the size of the map
-        map_channels, map_height, map_width = image.shape
+        map_height, map_width, map_channels = image.shape
 
         # Reshape maps with 1 channel images (greyscale) to 3 channels for inference
         if map_channels == 1: # This is tmp fix!

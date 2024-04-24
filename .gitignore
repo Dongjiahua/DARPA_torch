@@ -14,3 +14,6 @@ runs/
 yolo_data/
 exp/
 inference/
+eval_oneshot*
+legend_dict*
+inference_model.py
