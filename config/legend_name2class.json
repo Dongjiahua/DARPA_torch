@@ -1,0 +1,453 @@
+[
+    {
+        "id": 0,
+        "class": "1_pt",
+        "names": [
+            "1_pt",
+            "gravel_pit_pt"
+        ],
+        "example": "legend_base/1_pt.png"
+    },
+    {
+        "id": 1,
+        "class": "2_pt",
+        "names": [
+            "2_pt"
+        ],
+        "example": "legend_base/2_pt.png"
+    },
+    {
+        "id": 2,
+        "class": "3_pt",
+        "names": [
+            "3_pt",
+            "Prospect_pt",
+            "prospect_pit_iron_pt",
+            "Uranium_prospect_pt"
+        ],
+        "example": "legend_base/3_pt.png"
+    },
+    {
+        "id": 3,
+        "class": "4_pt",
+        "names": [
+            "4_pt"
+        ],
+        "example": "legend_base/4_pt.png"
+    },
+    {
+        "id": 4,
+        "class": "5_pt",
+        "names": [
+            "5_pt",
+            "Cu_or_U_mine_pt",
+            "mine_pt",
+            "rock_quarry_pt",
+            "Uranium_mine_pt"
+        ],
+        "example": "legend_base/5_pt.png"
+    },
+    {
+        "id": 5,
+        "class": "horiz_bedding_pt",
+        "names": [
+            "bedding_horiz_pt",
+            "horiz_bedding_pt",
+            "horizon_bedding_pt",
+            "Horizontal_bedding_pt",
+            "bedding_horizontal_pt",
+            "horizbed_pt",
+            "horizontal_pt",
+            "Horizontal_pt",
+            "horzbed_pt"
+        ],
+        "example": "legend_base/horiz_bedding_pt.png"
+    },
+    {
+        "id": 6,
+        "class": "inclined_bedding_pt",
+        "names": [
+            "bedding_inclined_pt",
+            "Inclined_bedding_-_S_pt",
+            "inclined_bedding_pt",
+            "bedding_pt",
+            "strike_dip_beds_pt",
+            "inclined_pt",
+            "bedding_inclined_pt",
+            "implied_bedding_pt",
+            "incl_or_imp_bedding_pt",
+            "inclbed_pt",
+            "Inclbed_pt",
+            "Inclined_Bedding_pt",
+            "Strike_and_dip_of_beds_pt",
+            "strike_dip_bedding_pt",
+            "strikedip_pt",
+            "Inclined_pt"
+        ],
+        "example": "legend_base/inclined_bedding_pt.png"
+    },
+    {
+        "id": 7,
+        "class": "volc_center_pt",
+        "names": [
+            "volc_center_pt",
+            "bur_volc_center_pt",
+            "small_cone_pt"
+        ],
+        "example": "legend_base/volc_center_pt.png"
+    },
+    {
+        "id": 8,
+        "class": "circle_pt",
+        "names": [
+            "collapse_pt",
+            "sample_pt",
+            "collapse_structure_pt",
+            "breccia_pipe_pt",
+            "C14_or_Argon_sample_pt",
+            "collapse_structure_pt",
+            "paleomag_sample_pt"
+        ],
+        "example": "legend_base/circle_pt.png"
+    },
+    {
+        "id": 9,
+        "class": "direction_divide_pt",
+        "names": [
+            "Direction_of_glacier_flow_across_topographic_divide_pt",
+            "fluvial_transport_pt",
+            "Mineral_Lineation_pt"
+        ],
+        "example": "legend_base/direction_divide_pt.png"
+    },
+    {
+        "id": 10,
+        "class": "direction_bedrock_pt",
+        "names": [
+            "Direction_of_ice_movement_or_meltwater_drainage_over_ice_scoured_bedrock_pt"
+        ],
+        "example": "legend_base/direction_bedrock_pt.png"
+    },
+    {
+        "id": 11,
+        "class": "dry_hole_pt",
+        "names": [
+            "dry_hole_pt"
+        ],
+        "example": "legend_base/dry_hole_pt.png"
+    },
+    {
+        "id": 12,
+        "class": "direction_diversion_pt",
+        "names": [
+            "Former_glacial-lake_outlet_or_drainage_diversion_pt"
+        ],
+        "example": "legend_base/direction_diversion_pt.png"
+    },
+    {
+        "id": 13,
+        "class": "igneous_foliation_pt",
+        "names": [
+            "igneous_foliation_pt",
+            "early_folia_inclin_pt",
+            "inclined_flow_pt"
+        ],
+        "example": "legend_base/igneous_foliation_pt.png"
+    },
+    {
+        "id": 14,
+        "class": "incl_foliation_pt",
+        "names": [
+            "incl_meta_foliation_pt",
+            "foliation_inclined_pt",
+            "foliation_pt",
+            "inclined_foliation_pt",
+            "inclined_layering_pt",
+            "late_folia_inclin_pt",
+            "metam_foliation_pt"
+        ],
+        "example": "legend_base/incl_foliation_pt.png"
+    },
+    {
+        "id": 15,
+        "class": "joint_pt",
+        "names": [
+            "joint_pt",
+            "inclin_shear_frac_pt",
+            "joint_inclined_pt"
+        ],
+        "example": "legend_base/joint_pt.png"
+    },
+    {
+        "id": 16,
+        "class": "overturned_bedding_pt",
+        "names": [
+            "Overturned_bedding_-_pt",
+            "bedding_overturned_pt",
+            "overturn_bedding_pt",
+            "overturned_bedding_pt",
+            "Overturned_Bedding_pt"
+        ],
+        "example": "legend_base/overturned_bedding_pt.png"
+    },
+    {
+        "id": 17,
+        "class": "Pingo_pt",
+        "names": [
+            "Pingo_pt"
+        ],
+        "example": "legend_base/Pingo_pt.png"
+    },
+    {
+        "id": 18,
+        "class": "triangle_pt",
+        "names": [
+            "sinkhole_pt",
+            "Ar_Ar_sample_pt"
+        ],
+        "example": "legend_base/triangle_pt.png"
+    },
+    {
+        "id": 19,
+        "class": "slope_direction_pt",
+        "names": [
+            "Slope_direction_on_gravel_surface_pt"
+        ],
+        "example": "legend_base/slope_direction_pt.png"
+    },
+    {
+        "id": 20,
+        "class": "U_shapde_divide_pt",
+        "names": [
+            "U-shaped_pass_-_where_glacier_crossed_topographic_divide_pt"
+        ],
+        "example": "legend_base/U_shapde_divide_pt.png"
+    },
+    {
+        "id": 21,
+        "class": "USGS_or_Chevron_foss_pt",
+        "names": [
+            "USGS_or_Chevron_foss_pt"
+        ],
+        "example": "legend_base/USGS_or_Chevron_foss_pt.png"
+    },
+    {
+        "id": 22,
+        "class": "vert_meta_foliation_pt",
+        "names": [
+            "vert_meta_foliation_pt",
+            "foliation_vertical_pt",
+            "met_vert_foliation_pt",
+            "Vertical_Late_Foliat_pt"
+        ],
+        "example": "legend_base/vert_meta_foliation_pt.png"
+    },
+    {
+        "id": 23,
+        "class": "vertical_bedding_pt",
+        "names": [
+            "Vertical_bedding_-_S_pt",
+            "bedding_vertical_pt",
+            "Strike_and_dip_of_vertical_beds_pt",
+            "vertical_bedding_pt",
+            "Vertical_Bedding_pt"
+        ],
+        "example": "legend_base/vertical_bedding_pt.png"
+    },
+    {
+        "id": 24,
+        "class": "vertical_joint_pt",
+        "names": [
+            "vertical_joint_pt",
+            "joint_vertical_pt"
+        ],
+        "example": "legend_base/vertical_joint_pt.png"
+    },
+    {
+        "id": 25,
+        "class": "water_well_pt",
+        "names": [
+            "water_well_pt"
+        ],
+        "example": "legend_base/water_well_pt.png"
+    },
+    {
+        "id": 26,
+        "class": "aplite_inclined_pt",
+        "names": [
+            "aplite_inclined_pt"
+        ],
+        "example": "legend_base/aplite_inclined_pt.png"
+    },
+    {
+        "id": 27,
+        "class": "aplite_vertical_pt",
+        "names": [
+            "aplite_vertical_pt"
+        ],
+        "example": "legend_base/aplite_vertical_pt.png"
+    },
+    {
+        "id": 28,
+        "class": "approx_bedding_pt",
+        "names": [
+            "bedding_approx_pt"
+        ],
+        "example": "legend_base/approx_bedding_pt.png"
+    },
+    {
+        "id": 29,
+        "class": "overturn_topknow_bedding_pt",
+        "names": [
+            "bed_overturn_topknow_pt"
+        ],
+        "example": "legend_base/overturn_topknow_bedding_pt.png"
+    },
+    {
+        "id": 30,
+        "class": "inclined_topknow_bedding_pt",
+        "names": [
+            "bedding_top_known_pt"
+        ],
+        "example": "legend_base/inclined_topknow_bedding_pt.png"
+    },
+    {
+        "id": 31,
+        "class": "vertical_topknow_bedding_pt",
+        "names": [
+            "bedding_vertical_top_pt"
+        ],
+        "example": "legend_base/vertical_topknow_bedding_pt.png"
+    },
+    {
+        "id": 32,
+        "class": "cleavage_inclined_pt",
+        "names": [
+            "cleavage_inclined_pt"
+        ],
+        "example": "legend_base/cleavage_inclined_pt.png"
+    },
+    {
+        "id": 33,
+        "class": "cleavage_vertical_pt",
+        "names": [
+            "cleavage_vertical_pt"
+        ],
+        "example": "legend_base/cleavage_vertical_pt.png"
+    },
+    {
+        "id": 34,
+        "class": "conodont_pt",
+        "names": [
+            "conodont_pt"
+        ],
+        "example": "legend_base/conodont_pt.png"
+    },
+    {
+        "id": 35,
+        "class": "dome_pt",
+        "names": [
+            "dome_pt"
+        ],
+        "example": "legend_base/dome_pt.png"
+    },
+    {
+        "id": 36,
+        "class": "estimated_pt",
+        "names": [
+            "estimated_pt",
+            "Estimated_pt",
+            "Strike_and_direction_of_dips_of_beds_from_distant_views_and_photo-interpretations_pt"
+        ],
+        "example": "legend_base/estimated_pt.png"
+    },
+    {
+        "id": 37,
+        "class": "exp_well_pt",
+        "names": [
+            "exp_well_pt"
+        ],
+        "example": "legend_base/exp_well_pt.png"
+    },
+    {
+        "id": 38,
+        "class": "explor_trench_pt",
+        "names": [
+            "explor_trench_pt"
+        ],
+        "example": "legend_base/explor_trench_pt.png"
+    },
+    {
+        "id": 39,
+        "class": "foliation_horizontal_pt",
+        "names": [
+            "foliation_horizontal_pt"
+        ],
+        "example": "legend_base/foliation_horizontal_pt.png"
+    },
+    {
+        "id": 40,
+        "class": "Phyllonitic_Foliatio_pt",
+        "names": [
+            "Phyllonitic_Foliatio_pt"
+        ],
+        "example": "legend_base/Phyllonitic_Foliatio_pt.png"
+    },
+    {
+        "id": 41,
+        "class": "rootless_vent_pt",
+        "names": [
+            "rootless_vent_pt"
+        ],
+        "example": "legend_base/rootless_vent_pt.png"
+    },
+    {
+        "id": 42,
+        "class": "sample_site_pt",
+        "names": [
+            "sample_site_pt"
+        ],
+        "example": "legend_base/sample_site_pt.png"
+    },
+    {
+        "id": 43,
+        "class": "Spring_pt",
+        "names": [
+            "Spring_pt"
+        ],
+        "example": "legend_base/Spring_pt.png"
+    },
+    {
+        "id": 44,
+        "class": "trace_fossils_flathe_pt",
+        "names": [
+            "trace_fossils_flathe_pt"
+        ],
+        "example": "legend_base/trace_fossils_flathe_pt.png"
+    },
+    {
+        "id": 45,
+        "class": "vert_flow_layering_pt",
+        "names": [
+            "vert_flow_layering_pt",
+            "Vertical_Early_Folia_pt"
+        ],
+        "example": "legend_base/vert_flow_layering_pt.png"
+    },
+    {
+        "id": 46,
+        "class": "volcanic_vent_pt",
+        "names": [
+            "volcanic_vent_pt"
+        ],
+        "example": "legend_base/volcanic_vent_pt.png"
+    },
+    {
+        "id": 47,
+        "class": "empty_circle_pt",
+        "names": [
+            "well_pt"
+        ],
+        "example": "legend_base/empty_circle_pt.png"
+    }
+]

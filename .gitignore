@@ -1,5 +1,6 @@
 */__pycache__
 *.pyc
+byol
 lightning_logs
 *.DS_Store
 output*
@@ -10,7 +11,7 @@ test.py
 test2.py 
 inference
 *.pt
-runs/
+runs
 yolo_data/
 exp/
 inference/
