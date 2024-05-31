@@ -12,8 +12,9 @@ from PIL import Image
 # Assuming the rest of your definitions (dataset, model, etc.) are as above
 # test model, a resnet 50
 import argparse
-from byol import BYOL
-BATCH_SIZE = 16
+from byol import BYOL, SimCLR
+MODEL = "SimCLR"
+BATCH_SIZE = 64
 EPOCHS     = 100
 LR         = 3e-4
 NUM_GPUS   = 2
@@ -33,12 +34,18 @@ args = parser.parse_args()
 class SelfSupervisedLearner(pl.LightningModule):
     def __init__(self, net, **kwargs):
         super().__init__()
-        self.learner = BYOL(net, **kwargs)
+        if MODEL == "SimCLR":
+            self.learner = SimCLR(net, **kwargs)
+        elif MODEL == "BYOL":
+            
+            self.learner = BYOL(net, **kwargs)
 
     def forward(self, images):
-        return self.learner(images,  return_embedding = True,
+        embedding = self.learner(images,  return_embedding = True,
         return_projection = False)
-
+        embedding = torch.nn.functional.normalize(embedding, dim=1)
+        return embedding
+        
     def training_step(self, images, _):
         loss = self.forward(images)
         self.log("loss", loss)
@@ -71,9 +78,7 @@ class ImagesDataset(Dataset):
 
         self.transform = transforms.Compose([
             transforms.Resize(image_size),
-            transforms.CenterCrop(image_size),
             transforms.ToTensor(),
-            transforms.Lambda(expand_greyscale)
         ])
 
     def __len__(self):
@@ -87,7 +92,7 @@ class ImagesDataset(Dataset):
         image_name = str(path).split('/')[-1].split('.')[0]
         return self.transform(img), str(image_name)
 # Step 1: Load the trained model
-model_checkpoint = '/u/jiahuad2/codebase/yolo_inference/byol/lightning_logs/version_2/checkpoints/epoch=33-step=10098.ckpt'
+model_checkpoint = '/u/jiahuad2/codebase/yolo_inference/byol/lightning_logs/version_15/checkpoints/epoch=999-step=195000.ckpt'
 trained_model = SelfSupervisedLearner.load_from_checkpoint(model_checkpoint, net=resnet, image_size = IMAGE_SIZE)
 trained_model.eval()
 trained_model.freeze()

@@ -257,6 +257,7 @@ class BYOL(nn.Module):
     def forward(
         self,
         x,
+        label = None,
         return_embedding = False,
         return_projection = True
     ):
@@ -354,15 +355,17 @@ class SimCLR(nn.Module):
         # send a mock image tensor to instantiate singleton parameters
         self.forward(torch.randn(2, 3, image_size, image_size, device=device))
         
-    def info_NCE(self, q, k):
+    def info_NCE(self, q, k, mask = None):
         temp = 0.07
         N = q.shape[0]
         q = F.normalize(q, dim = -1, p = 2)
         k = F.normalize(k, dim = -1, p = 2)
         logits = torch.matmul(q, k.transpose(-2, -1))
         logits /= temp
-
+        if mask is not None:
+            logits = logits - 1e9 * mask
         label = torch.arange(N, device = logits.device)
+        
         loss = F.cross_entropy(logits, label)
         return loss
 
@@ -384,6 +387,7 @@ class SimCLR(nn.Module):
     def forward(
         self,
         x,
+        label = None,
         return_embedding = False,
         return_projection = True
     ):
@@ -393,7 +397,7 @@ class SimCLR(nn.Module):
             # print(x.max())
             x = self.eval_aug(x)
             return self.online_encoder(x, return_projection = return_projection)
-
+        
         image_one, image_two = self.augment1(x), self.augment2(x)
 
         images = torch.cat((image_one, image_two), dim = 0)
@@ -410,8 +414,16 @@ class SimCLR(nn.Module):
 
             target_proj_one, target_proj_two = target_projections.chunk(2, dim = 0)
 
-        loss_one = self.info_NCE(online_proj_one, target_proj_two.detach())
-        loss_two = self.info_NCE(online_proj_two, target_proj_one.detach())
+        if label is not None:
+            # build a mask to the logit, make sure no contrastive learning between same class
+            mask = label[None].expand(*label.shape, *label.shape)
+            mask = mask == mask.t()
+            mask.fill_diagonal_(False)
+            mask = mask.float()
+        else:
+            mask = None
+        loss_one = self.info_NCE(online_proj_one, target_proj_two.detach(), mask)
+        loss_two = self.info_NCE(online_proj_two, target_proj_one.detach(), mask)
 
         loss = loss_one + loss_two
         return loss.mean()

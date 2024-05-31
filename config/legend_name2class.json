@@ -4,7 +4,8 @@
         "class": "1_pt",
         "names": [
             "1_pt",
-            "gravel_pit_pt"
+            "gravel_pit_pt",
+            "Gravel_or_Borrow_Pit_pt"
         ],
         "example": "legend_base/1_pt.png"
     },
@@ -12,7 +13,9 @@
         "id": 1,
         "class": "2_pt",
         "names": [
-            "2_pt"
+            "2_pt",
+            "Mine_Shaft_pt",
+            "mine_shaft_pt"
         ],
         "example": "legend_base/2_pt.png"
     },
@@ -22,8 +25,10 @@
         "names": [
             "3_pt",
             "Prospect_pt",
+            "prospect_pt",
             "prospect_pit_iron_pt",
-            "Uranium_prospect_pt"
+            "Uranium_prospect_pt",
+            "Prospect_Pit_pt"
         ],
         "example": "legend_base/3_pt.png"
     },
@@ -31,7 +36,8 @@
         "id": 3,
         "class": "4_pt",
         "names": [
-            "4_pt"
+            "4_pt",
+            "Adit_pt"
         ],
         "example": "legend_base/4_pt.png"
     },
@@ -43,7 +49,8 @@
             "Cu_or_U_mine_pt",
             "mine_pt",
             "rock_quarry_pt",
-            "Uranium_mine_pt"
+            "Uranium_mine_pt",
+            "Mine_or_Quarry_pt"
         ],
         "example": "legend_base/5_pt.png"
     },
@@ -55,6 +62,7 @@
             "horiz_bedding_pt",
             "horizon_bedding_pt",
             "Horizontal_bedding_pt",
+            "horizontal_bedding_pt",
             "bedding_horizontal_pt",
             "horizbed_pt",
             "horizontal_pt",
@@ -82,7 +90,8 @@
             "Strike_and_dip_of_beds_pt",
             "strike_dip_bedding_pt",
             "strikedip_pt",
-            "Inclined_pt"
+            "Inclined_pt",
+            "top_of_bed_pt"
         ],
         "example": "legend_base/inclined_bedding_pt.png"
     },
@@ -106,7 +115,11 @@
             "breccia_pipe_pt",
             "C14_or_Argon_sample_pt",
             "collapse_structure_pt",
-            "paleomag_sample_pt"
+            "paleomag_sample_pt",
+            "loc_strat_section_pt",
+            "Crystalline_rocks_pt",
+            "coll_breccia_pipe_pt",
+            "sample_locality_pt"
         ],
         "example": "legend_base/circle_pt.png"
     },
@@ -116,7 +129,9 @@
         "names": [
             "Direction_of_glacier_flow_across_topographic_divide_pt",
             "fluvial_transport_pt",
-            "Mineral_Lineation_pt"
+            "Mineral_Lineation_pt",
+            "direction_of_ice_mov_pt",
+            "lineation_pt"
         ],
         "example": "legend_base/direction_divide_pt.png"
     },
@@ -174,7 +189,8 @@
         "names": [
             "joint_pt",
             "inclin_shear_frac_pt",
-            "joint_inclined_pt"
+            "joint_inclined_pt",
+            "fault_strike_dip_pt"
         ],
         "example": "legend_base/joint_pt.png"
     },
@@ -203,7 +219,10 @@
         "class": "triangle_pt",
         "names": [
             "sinkhole_pt",
-            "Ar_Ar_sample_pt"
+            "Ar_Ar_sample_pt",
+            "station_pt",
+            "C14_pt",
+            "C14_age_pt"
         ],
         "example": "legend_base/triangle_pt.png"
     },
@@ -238,7 +257,8 @@
             "vert_meta_foliation_pt",
             "foliation_vertical_pt",
             "met_vert_foliation_pt",
-            "Vertical_Late_Foliat_pt"
+            "Vertical_Late_Foliat_pt",
+            "vertical_foliation_pt"
         ],
         "example": "legend_base/vert_meta_foliation_pt.png"
     },
@@ -251,6 +271,7 @@
             "Strike_and_dip_of_vertical_beds_pt",
             "vertical_bedding_pt",
             "Vertical_Bedding_pt"
+            
         ],
         "example": "legend_base/vertical_bedding_pt.png"
     },
@@ -438,7 +459,8 @@
         "id": 46,
         "class": "volcanic_vent_pt",
         "names": [
-            "volcanic_vent_pt"
+            "volcanic_vent_pt",
+            "teepee_butte_pt"
         ],
         "example": "legend_base/volcanic_vent_pt.png"
     },
@@ -446,7 +468,8 @@
         "id": 47,
         "class": "empty_circle_pt",
         "names": [
-            "well_pt"
+            "well_pt",
+            "Saprolite_pt"
         ],
         "example": "legend_base/empty_circle_pt.png"
     }
