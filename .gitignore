@@ -1,0 +1,15 @@
+eval_viz/*
+dif_vis/
+__pycache__/
+debug/
+coco_checkpoints/
+checkpoints/
+*.tar
+tmp/
+wandb/
+superpixel_fcn/
+Swin-Unet/
+cache/
+*.swb
+
+
